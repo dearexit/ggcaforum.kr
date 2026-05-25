@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>보조금 집행 센터 모니터링</title>
+<style>
+/* ── 기본 ── */
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'맑은 고딕','Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0f2f5;color:#1a1a1a;font-size:14px;}
+input,select,textarea,button{font-family:inherit;}
+
+/* ── 헤더 ── */
+.app-header{background:linear-gradient(135deg,#1b3a6b,#7c3aed);color:#fff;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.25);}
+.app-header h1{font-size:18px;font-weight:700;letter-spacing:.03em;}
+.app-header .sub{font-size:12px;opacity:.75;margin-top:2px;}
+.header-actions{display:flex;gap:8px;align-items:center;}
+
+/* ── 탭 ── */
+.tabs{background:#fff;border-bottom:2px solid #e0e4eb;display:flex;gap:0;padding:0 24px;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+.tab-btn{padding:13px 22px;border:none;background:transparent;cursor:pointer;font-size:13.5px;font-weight:600;color:#6b7280;border-bottom:3px solid transparent;margin-bottom:-2px;transition:color .2s,border-color .2s;white-space:nowrap;}
+.tab-btn.active{color:#7c3aed;border-bottom-color:#7c3aed;}
+.tab-btn:hover:not(.active){color:#374151;}
+
+/* ── 탭 패널 ── */
+.tab-panel{display:none;padding:24px 28px 48px;}
+.tab-panel.active{display:block;}
+
+/* ── 카드 ── */
+.card{background:#fff;border-radius:10px;border:1px solid #e5e7eb;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:20px;overflow:hidden;}
+.card-header{background:#f8f9fb;border-bottom:1px solid #e5e7eb;padding:12px 18px;font-weight:700;font-size:13.5px;color:#1b3a6b;display:flex;align-items:center;gap:8px;}
+.card-body{padding:18px;}
+
+/* ── 폼 ── */
+.form-row{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;}
+.form-group{display:flex;flex-direction:column;gap:5px;flex:1;min-width:260px;}
+.form-group label{font-size:12px;font-weight:600;color:#374151;}
+.form-group input,.form-group select{padding:9px 12px;border:1px solid #d1d5db;border-radius:7px;font-size:13.5px;background:#fafafa;transition:border-color .2s;}
+.form-group input:focus{outline:none;border-color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,.1);background:#fff;}
+
+/* ── 버튼 ── */
+.btn{padding:9px 22px;border-radius:7px;border:none;cursor:pointer;font-size:13.5px;font-weight:700;transition:all .15s;}
+.btn-primary{background:#7c3aed;color:#fff;}
+.btn-primary:hover{background:#6d28d9;}
+.btn-blue{background:#1b3a6b;color:#fff;}
+.btn-blue:hover{background:#15305c;}
+.btn-outline{background:#fff;border:1.5px solid #d1d5db;color:#374151;}
+.btn-outline:hover{border-color:#7c3aed;color:#7c3aed;}
+.btn-success{background:#2d6a4f;color:#fff;}
+.btn-success:hover{background:#1e4d38;}
+.btn-sm{padding:6px 14px;font-size:12px;}
+
+/* ── 통계 카드 ── */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px;margin-bottom:24px;}
+.stat-card{background:#fff;border-radius:10px;border:1px solid #e5e7eb;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+.stat-card .label{font-size:12px;color:#6b7280;font-weight:600;margin-bottom:6px;}
+.stat-card .value{font-size:22px;font-weight:700;color:#1b3a6b;}
+.stat-card .value.green{color:#2d6a4f;}
+.stat-card .value.red{color:#dc2626;}
+.stat-card .value.purple{color:#7c3aed;}
+.stat-card .value.orange{color:#d97706;}
+
+/* ── 단체 그리드 ── */
+.org-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;}
+.org-card{background:#fff;border-radius:10px;border:1px solid #e5e7eb;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,.05);cursor:pointer;transition:all .2s;}
+.org-card:hover{border-color:#7c3aed;box-shadow:0 3px 12px rgba(124,58,237,.15);transform:translateY(-1px);}
+.org-card .org-name{font-weight:700;font-size:15px;color:#1a1a1a;margin-bottom:3px;}
+.org-card .org-meta{font-size:12px;color:#6b7280;margin-bottom:12px;}
+.org-card .org-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;}
+.org-card .stat-item .s-label{font-size:11px;color:#9ca3af;font-weight:600;}
+.org-card .stat-item .s-value{font-size:14px;font-weight:700;color:#1b3a6b;margin-top:2px;}
+.org-card .stat-item .s-value.red{color:#dc2626;}
+.org-card .stat-item .s-value.green{color:#2d6a4f;}
+.org-bar-wrap{background:#e5e7eb;border-radius:6px;height:8px;width:100%;}
+.org-bar{border-radius:6px;height:8px;transition:width .5s;}
+.org-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;margin-left:8px;}
+.org-badge.ok{background:#dcfce7;color:#15803d;}
+.org-badge.warn{background:#fef3c7;color:#92400e;}
+.org-badge.over{background:#fee2e2;color:#dc2626;}
+.org-badge.none{background:#f3f4f6;color:#6b7280;}
+.org-sync{font-size:11px;color:#9ca3af;margin-top:8px;}
+
+/* ── 테이블 ── */
+.data-table{width:100%;border-collapse:collapse;font-size:13px;}
+.data-table th{background:#1b3a6b;color:#fff;padding:10px 12px;text-align:center;font-weight:600;white-space:nowrap;}
+.data-table td{padding:9px 11px;border:1px solid #e5e7eb;text-align:center;vertical-align:middle;}
+.data-table tr:nth-child(even) td{background:#f9fafb;}
+.data-table tr:hover td{background:#f0f4ff;}
+.data-table .amt{text-align:right;font-variant-numeric:tabular-nums;}
+.data-table .left{text-align:left;}
+.over-row td{background:#fff5f5!important;color:#dc2626;}
+
+/* ── 상세 패널 ── */
+#detail-panel{display:none;}
+.detail-back{display:flex;align-items:center;gap:10px;margin-bottom:18px;}
+.detail-back button{background:none;border:1.5px solid #d1d5db;border-radius:7px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:600;color:#374151;}
+.detail-back button:hover{border-color:#7c3aed;color:#7c3aed;}
+.detail-title{font-size:18px;font-weight:700;color:#1b3a6b;}
+
+/* ── 진행바 ── */
+.progress-bar-wrap{background:#e5e7eb;border-radius:4px;height:8px;min-width:80px;}
+.progress-bar{border-radius:4px;height:8px;transition:width .4s;}
+
+/* ── JSON 업로드 ── */
+.drop-zone{border:2px dashed #c4b5fd;border-radius:10px;background:#faf5ff;padding:30px;text-align:center;cursor:pointer;transition:all .2s;}
+.drop-zone:hover,.drop-zone.drag-over{border-color:#7c3aed;background:#f3e8ff;}
+.drop-zone .dz-icon{font-size:40px;margin-bottom:10px;}
+.drop-zone .dz-text{font-size:14px;font-weight:600;color:#7c3aed;}
+.drop-zone .dz-sub{font-size:12px;color:#9ca3af;margin-top:4px;}
+
+/* ── 설정 안내 ── */
+.guide-step{display:flex;gap:14px;margin-bottom:16px;align-items:flex-start;}
+.guide-step .step-no{background:#7c3aed;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;margin-top:2px;}
+.guide-step .step-body .step-title{font-weight:700;font-size:13.5px;color:#1a1a1a;margin-bottom:4px;}
+.guide-step .step-body .step-desc{font-size:13px;color:#4b5563;line-height:1.7;}
+code{background:#f3f4f6;border:1px solid #e5e7eb;border-radius:4px;padding:2px 6px;font-size:12px;font-family:'Consolas','Courier New',monospace;color:#1b3a6b;}
+pre{background:#1e293b;color:#e2e8f0;border-radius:8px;padding:16px;font-size:12px;line-height:1.7;overflow-x:auto;font-family:'Consolas','Courier New',monospace;margin:8px 0;}
+
+/* ── 알림 토스트 ── */
+#toast{position:fixed;bottom:28px;right:28px;background:#1b3a6b;color:#fff;padding:12px 22px;border-radius:10px;font-size:13.5px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.25);opacity:0;transform:translateY(10px);transition:all .3s;pointer-events:none;z-index:9999;}
+#toast.show{opacity:1;transform:translateY(0);}
+
+/* ── 반응형 ── */
+@media(max-width:640px){
+  .org-grid{grid-template-columns:1fr;}
+  .stat-grid{grid-template-columns:1fr 1fr;}
+  .app-header{flex-direction:column;align-items:flex-start;gap:10px;}
+}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div>
+    <h1>📊 보조금 집행 센터 모니터링</h1>
+    <div class="sub">11개 참여단체 실시간 집행현황 통합 관리</div>
+  </div>
+  <div class="header-actions">
+    <span id="last-refresh" style="font-size:11px;opacity:.7;"></span>
+    <button class="btn btn-outline" style="font-size:12px;padding:6px 14px;" onclick="refreshData()">🔄 새로고침</button>
+    <button class="btn btn-success" style="font-size:12px;padding:6px 14px;" onclick="exportAll()">💾 전체 내보내기</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('tab-dashboard',this)">🏠 전체 대시보드</button>
+  <button class="tab-btn" onclick="switchTab('tab-recent',this)">📋 최근 지출내역</button>
+  <button class="tab-btn" onclick="switchTab('tab-import',this)">📥 JSON 불러오기</button>
+  <button class="tab-btn" onclick="switchTab('tab-setup',this)">⚙️ 연동 설정 안내</button>
+</div>
+
+<!-- ════════════ ① 전체 대시보드 ════════════ -->
+<div id="tab-dashboard" class="tab-panel active">
+
+  <!-- 연동 URL 설정 -->
+  <div class="card" id="url-config-card">
+    <div class="card-header">🔗 Google Apps Script 연동 URL</div>
+    <div class="card-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Apps Script 배포 URL</label>
+          <input type="url" id="gas-url" placeholder="https://script.google.com/macros/s/......./exec">
+        </div>
+        <div style="display:flex;gap:8px;padding-bottom:1px;">
+          <button class="btn btn-primary" onclick="saveGasUrl()">저장 및 불러오기</button>
+          <button class="btn btn-outline" onclick="document.getElementById('url-config-card').style.display='none'">접기</button>
+        </div>
+      </div>
+      <div id="url-status" style="margin-top:10px;font-size:12.5px;"></div>
+    </div>
+  </div>
+
+  <!-- 전체 통계 -->
+  <div id="summary-stats" class="stat-grid"></div>
+
+  <!-- 단체 목록 or 상세 -->
+  <div id="org-list-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h2 style="font-size:16px;font-weight:700;color:#1b3a6b;">📦 단체별 집행현황</h2>
+      <div style="display:flex;gap:8px;">
+        <select id="filter-status" onchange="renderOrgGrid()" style="padding:7px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+          <option value="">전체 단체</option>
+          <option value="over">예산초과</option>
+          <option value="warn">주의(70%↑)</option>
+          <option value="ok">정상</option>
+          <option value="none">미제출</option>
+        </select>
+      </div>
+    </div>
+    <div id="org-grid" class="org-grid"></div>
+    <div id="org-empty" style="display:none;text-align:center;padding:50px 20px;color:#9ca3af;">
+      <div style="font-size:40px;margin-bottom:12px;">📭</div>
+      <div style="font-weight:600;margin-bottom:6px;">데이터가 없습니다</div>
+      <div style="font-size:13px;">JSON 파일을 불러오거나, Apps Script URL을 설정하세요.</div>
+    </div>
+  </div>
+
+  <!-- 단체 상세 -->
+  <div id="detail-panel">
+    <div class="detail-back">
+      <button onclick="closeDetail()">← 목록으로</button>
+      <div class="detail-title" id="detail-title"></div>
+    </div>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<!-- ════════════ ② 최근 지출내역 ════════════ -->
+<div id="tab-recent" class="tab-panel">
+  <div class="card">
+    <div class="card-header">📋 전체 단체 최근 지출내역 (최신 50건)</div>
+    <div class="card-body">
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>단체명</th>
+              <th>결의번호</th>
+              <th>지출일자</th>
+              <th>비목</th>
+              <th>지급처</th>
+              <th>지출내용</th>
+              <th>합계금액</th>
+              <th>동기화시각</th>
+            </tr>
+          </thead>
+          <tbody id="recent-all-tbody"></tbody>
+        </table>
+      </div>
+      <div id="recent-empty" style="display:none;text-align:center;padding:30px;color:#9ca3af;">데이터가 없습니다.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ ③ JSON 불러오기 ════════════ -->
+<div id="tab-import" class="tab-panel">
+  <div class="card">
+    <div class="card-header">📥 단체 JSON 파일 불러오기</div>
+    <div class="card-body">
+      <p style="font-size:13.5px;color:#4b5563;margin-bottom:16px;line-height:1.7;">
+        Apps Script 연동이 없는 경우, 각 단체로부터 받은 <strong>지출현황_단체코드_날짜.json</strong> 파일을 여기에 불러오세요.<br>
+        파일을 드래그 앤 드롭하거나 클릭하여 선택하세요 (여러 파일 동시 가능).
+      </p>
+
+      <!-- 드롭존 -->
+      <div class="drop-zone" id="drop-zone"
+        ondragover="event.preventDefault();this.classList.add('drag-over')"
+        ondragleave="this.classList.remove('drag-over')"
+        ondrop="handleDrop(event)"
+        onclick="document.getElementById('file-input').click()">
+        <div class="dz-icon">📂</div>
+        <div class="dz-text">JSON 파일을 드래그하거나 클릭해서 선택</div>
+        <div class="dz-sub">여러 단체 파일을 한 번에 불러올 수 있습니다</div>
+        <input type="file" id="file-input" accept=".json" multiple style="display:none" onchange="handleFileInput(event)">
+      </div>
+
+      <!-- 불러온 파일 목록 -->
+      <div id="import-log" style="margin-top:16px;"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">📦 불러온 단체 데이터 목록</div>
+    <div class="card-body">
+      <div id="imported-list" style="font-size:13px;color:#6b7280;text-align:center;padding:20px;">불러온 파일이 없습니다.</div>
+      <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-outline btn-sm" onclick="if(confirm('불러온 모든 데이터를 지우시겠습니까?'))clearImported()">🗑️ 전체 삭제</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ ④ 연동 설정 안내 ════════════ -->
+<div id="tab-setup" class="tab-panel">
+  <div class="card">
+    <div class="card-header">🚀 Google Apps Script 연동 설정 방법</div>
+    <div class="card-body">
+      <p style="font-size:13.5px;color:#4b5563;margin-bottom:20px;line-height:1.7;">
+        아래 절차를 따라 <strong>무료 Google 계정</strong>으로 센터 모니터링 서버를 5분 만에 구축할 수 있습니다.
+      </p>
+
+      <div class="guide-step">
+        <div class="step-no">1</div>
+        <div class="step-body">
+          <div class="step-title">Google Sheets 만들기</div>
+          <div class="step-desc">
+            <a href="https://sheets.google.com" target="_blank" style="color:#7c3aed;font-weight:700;">sheets.google.com</a> 에서 새 스프레드시트를 만들고,
+            주소창의 URL에서 <code>/d/</code> 와 <code>/edit</code> 사이의 긴 문자열을 복사해두세요.<br>
+            예: <code>https://docs.google.com/spreadsheets/d/<strong>1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms</strong>/edit</code>
+          </div>
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="step-no">2</div>
+        <div class="step-body">
+          <div class="step-title">Apps Script 열기</div>
+          <div class="step-desc">
+            스프레드시트에서 상단 메뉴 <strong>확장 프로그램 → Apps Script</strong>를 클릭하세요.
+          </div>
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="step-no">3</div>
+        <div class="step-body">
+          <div class="step-title">아래 코드를 붙여넣기</div>
+          <div class="step-desc">
+            Code.gs의 기존 내용을 전부 지우고 아래 코드를 붙여넣은 후,
+            <code>YOUR_SPREADSHEET_ID</code> 부분을 1단계에서 복사한 ID로 교체하세요.
+          </div>
+          <pre id="gas-code-block">// ─── Google Apps Script 코드 ───────────────────────────────────
+const SHEET_ID = 'YOUR_SPREADSHEET_ID'; // ← 여기에 스프레드시트 ID 입력
+
+function doPost(e) {
+  try {
+    const data = JSON.parse(e.postData.contents);
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheetName = (data.orgCode || 'UNKNOWN').toString().substring(0, 30);
+    let sheet = ss.getSheetByName(sheetName);
+    if (!sheet) sheet = ss.insertSheet(sheetName);
+    sheet.clearContents();
+    sheet.getRange(1, 1).setValue(e.postData.contents);
+    sheet.getRange(1, 2).setValue(new Date().toISOString());
+    sheet.getRange(1, 3).setValue(data.orgName || '');
+    return ContentService
+      .createTextOutput(JSON.stringify({ success: true, orgCode: data.orgCode }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ success: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doGet(e) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const result = {};
+    ss.getSheets().forEach(sheet => {
+      const val = sheet.getRange(1, 1).getValue();
+      const syncedAt = sheet.getRange(1, 2).getValue();
+      if (val) {
+        try {
+          result[sheet.getName()] = {
+            data: JSON.parse(val),
+            syncedAt: syncedAt
+          };
+        } catch(err) {}
+      }
+    });
+    return ContentService
+      .createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}</pre>
+          <button class="btn btn-outline btn-sm" onclick="copyGasCode()" style="margin-top:8px;">📋 코드 복사</button>
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="step-no">4</div>
+        <div class="step-body">
+          <div class="step-title">배포하기</div>
+          <div class="step-desc">
+            ① 저장(Ctrl+S) → ② 오른쪽 상단 <strong>배포 → 새 배포</strong> 클릭<br>
+            ③ 유형: <strong>웹 앱</strong> 선택 → 실행 대상: <strong>나</strong> → 액세스 권한: <strong>모든 사용자</strong><br>
+            ④ <strong>배포</strong> 클릭 → 권한 부여 후 <strong>웹 앱 URL</strong>을 복사
+          </div>
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="step-no">5</div>
+        <div class="step-body">
+          <div class="step-title">URL 배포 및 등록</div>
+          <div class="step-desc">
+            ① 복사한 URL을 이 페이지 <strong>대시보드 탭의 URL 입력창</strong>에 붙여넣기<br>
+            ② 같은 URL을 각 단체의 <code>지출결의서.html</code> → <strong>기본정보 설정 → 센터 연동 URL</strong>에도 입력하도록 안내<br>
+            ③ 이후 각 단체가 결의서를 저장할 때마다 자동으로 데이터가 전송됩니다
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:20px;padding:14px 16px;background:#faf5ff;border:1px solid #e9d5ff;border-radius:8px;font-size:13px;color:#6d28d9;line-height:1.8;">
+        💡 <strong>오프라인(JSON 파일) 방식</strong>: Apps Script 설정 없이도 각 단체가 <strong>📤 JSON 내보내기</strong> 버튼으로 파일을 이메일/카카오톡 등으로 보내면,
+        이 페이지의 <strong>JSON 불러오기 탭</strong>에서 파일을 불러와 현황을 확인할 수 있습니다.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 토스트 알림 -->
+<div id="toast"></div>
+
+<script>
+/* ════════════════════════════════
+   데이터 저장소
+════════════════════════════════ */
+// orgsData: { orgCode: { data:{...}, syncedAt:'', source:'gas'|'json' } }
+let orgsData = {};
+
+function loadLocal(){
+  try{const v=localStorage.getItem('center_orgsData');if(v)orgsData=JSON.parse(v);}catch(e){}
+}
+function saveLocal(){
+  try{localStorage.setItem('center_orgsData',JSON.stringify(orgsData));}catch(e){}
+}
+loadLocal();
+
+/* ════════════════════════════════
+   유틸
+════════════════════════════════ */
+function fmtAmt(n){if(!n&&n!==0)return '-';return Number(n).toLocaleString('ko-KR');}
+function fmtDate(s){if(!s)return '-';try{const d=new Date(s);if(isNaN(d))return s;return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;}catch(e){return s;}}
+function fmtDateTime(s){if(!s)return '-';try{const d=new Date(s);if(isNaN(d))return s;return `${fmtDate(s)} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;}catch(e){return s;}}
+function toast(msg,dur=2800){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),dur);}
+
+const ITEMS=['강사비','회의참석비','단순인건비','원고비','물품구입비','임차비','인쇄비','홍보비','식비','다과비','송금수수료'];
+
+function calcOrgStats(d){
+  const totalBudget=d.totalBudget||Object.values(d.budget||{}).reduce((s,v)=>s+Number(v),0);
+  const totalSpent=(d.resolutions||[]).reduce((sum,r)=>
+    sum+(r.items||[]).reduce((s,i)=>s+(Number(i.amount)||0)+(Number(i.vat)||0),0),0);
+  const remain=totalBudget-totalSpent;
+  const rate=totalBudget>0?Math.round(totalSpent/totalBudget*100):0;
+  return {totalBudget,totalSpent,remain,rate};
+}
+
+/* ════════════════════════════════
+   탭
+════════════════════════════════ */
+function switchTab(id,btn){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='tab-dashboard'){renderDashboard();}
+  if(id==='tab-recent'){renderRecentAll();}
+  if(id==='tab-import'){renderImportedList();}
+}
+
+/* ════════════════════════════════
+   GAS URL 설정
+════════════════════════════════ */
+let gasUrl=localStorage.getItem('center_gasUrl')||'';
+document.getElementById('gas-url').value=gasUrl;
+
+function saveGasUrl(){
+  gasUrl=document.getElementById('gas-url').value.trim();
+  localStorage.setItem('center_gasUrl',gasUrl);
+  if(gasUrl) fetchFromGas();
+  else toast('❌ URL이 비어있습니다.');
+}
+
+async function fetchFromGas(){
+  if(!gasUrl){toast('Apps Script URL이 설정되지 않았습니다.');return;}
+  const status=document.getElementById('url-status');
+  status.innerHTML='<span style="color:#7c3aed;">🔄 데이터 불러오는 중...</span>';
+  try{
+    const resp=await fetch(gasUrl,{method:'GET',mode:'cors'});
+    const json=await resp.json();
+    let count=0;
+    Object.entries(json).forEach(([orgCode,entry])=>{
+      if(entry.data){
+        orgsData[orgCode]={data:entry.data,syncedAt:entry.syncedAt||'',source:'gas'};
+        count++;
+      }
+    });
+    saveLocal();
+    status.innerHTML=`<span style="color:#2d6a4f;">✅ ${count}개 단체 데이터 불러오기 완료</span>`;
+    renderDashboard();
+    document.getElementById('last-refresh').textContent='최근 갱신: '+fmtDateTime(new Date().toISOString());
+    toast(`✅ ${count}개 단체 데이터 갱신 완료`);
+  }catch(e){
+    status.innerHTML=`<span style="color:#dc2626;">❌ 불러오기 실패: ${e.message} (CORS 오류 시 JSON 방식 사용)</span>`;
+    toast('❌ 데이터 불러오기 실패');
+  }
+}
+
+function refreshData(){
+  if(gasUrl) fetchFromGas();
+  else{renderDashboard();toast('🔄 화면 새로고침 완료');}
+}
+
+/* ════════════════════════════════
+   대시보드 렌더링
+════════════════════════════════ */
+function renderDashboard(){
+  renderSummaryStats();
+  renderOrgGrid();
+}
+
+function renderSummaryStats(){
+  const orgs=Object.values(orgsData);
+  const total={budget:0,spent:0,remain:0};
+  let overCount=0,warnCount=0;
+  orgs.forEach(o=>{
+    const s=calcOrgStats(o.data);
+    total.budget+=s.totalBudget;
+    total.spent+=s.totalSpent;
+    total.remain+=s.remain;
+    if(s.remain<0) overCount++;
+    else if(s.rate>=70) warnCount++;
+  });
+  const totalRate=total.budget>0?Math.round(total.spent/total.budget*100):0;
+  document.getElementById('summary-stats').innerHTML=`
+    <div class="stat-card"><div class="label">참여 단체 수</div><div class="value purple">${orgs.length}개</div></div>
+    <div class="stat-card"><div class="label">전체 교부예산 합계</div><div class="value">${fmtAmt(total.budget)} 원</div></div>
+    <div class="stat-card"><div class="label">전체 집행금액 합계</div><div class="value green">${fmtAmt(total.spent)} 원</div></div>
+    <div class="stat-card"><div class="label">전체 잔액 합계</div><div class="value ${total.remain<0?'red':'orange'}">${fmtAmt(total.remain)} 원</div></div>
+    <div class="stat-card"><div class="label">전체 집행률</div><div class="value ${totalRate>=90?'red':totalRate>=70?'orange':'green'}">${totalRate}%</div></div>
+    <div class="stat-card"><div class="label">예산초과 단체</div><div class="value ${overCount>0?'red':'green'}">${overCount}개</div></div>
+    <div class="stat-card"><div class="label">주의 단체(70%↑)</div><div class="value ${warnCount>0?'orange':'green'}">${warnCount}개</div></div>`;
+}
+
+function renderOrgGrid(){
+  const filter=document.getElementById('filter-status').value;
+  const grid=document.getElementById('org-grid');
+  const empty=document.getElementById('org-empty');
+  grid.innerHTML='';
+
+  const entries=Object.entries(orgsData);
+  if(!entries.length){empty.style.display='block';grid.style.display='none';return;}
+  empty.style.display='none';grid.style.display='grid';
+
+  let shown=0;
+  entries.sort((a,b)=>(a[1].data.orgName||a[0]).localeCompare(b[1].data.orgName||b[0])).forEach(([orgCode,entry])=>{
+    const d=entry.data;
+    const s=calcOrgStats(d);
+    let status='ok';
+    if(s.remain<0) status='over';
+    else if(s.rate>=70) status='warn';
+    if(filter&&filter!==status&&!(filter==='none'&&!d.orgName)) return;
+    shown++;
+
+    const barColor=s.remain<0?'#dc2626':s.rate>=70?'#d97706':'#2d6a4f';
+    const badgeMap={ok:{cls:'ok',txt:'정상'},warn:{cls:'warn',txt:'주의'},over:{cls:'over',txt:'초과'},none:{cls:'none',txt:'미제출'}};
+    const badge=badgeMap[status]||badgeMap['none'];
+
+    const resCount=(d.resolutions||[]).length;
+    const lastSync=entry.syncedAt?fmtDateTime(entry.syncedAt):'미동기화';
+
+    const div=document.createElement('div');
+    div.className='org-card';
+    div.innerHTML=`
+      <div class="org-name">${d.orgName||orgCode} <span class="org-badge ${badge.cls}">${badge.txt}</span></div>
+      <div class="org-meta">${d.projName||''} · 결의서 ${resCount}건</div>
+      <div class="org-stats">
+        <div class="stat-item">
+          <div class="s-label">배정예산</div>
+          <div class="s-value">${fmtAmt(s.totalBudget)}</div>
+        </div>
+        <div class="stat-item">
+          <div class="s-label">집행금액</div>
+          <div class="s-value ${s.totalSpent>s.totalBudget?'red':'green'}">${fmtAmt(s.totalSpent)}</div>
+        </div>
+        <div class="stat-item">
+          <div class="s-label">잔액</div>
+          <div class="s-value ${s.remain<0?'red':''}">${fmtAmt(s.remain)}</div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#6b7280;margin-bottom:5px;">
+        <span>집행률 ${s.rate}%</span>
+        <span>${fmtAmt(s.totalSpent)} / ${fmtAmt(s.totalBudget)}</span>
+      </div>
+      <div class="org-bar-wrap">
+        <div class="org-bar" style="width:${Math.min(s.rate,100)}%;background:${barColor};"></div>
+      </div>
+      <div class="org-sync">🕐 동기화: ${lastSync} · ${entry.source==='json'?'📂 JSON':'🔗 자동'}</div>`;
+    div.onclick=()=>openDetail(orgCode);
+    grid.appendChild(div);
+  });
+
+  if(shown===0){empty.style.display='block';}
+}
+
+/* ════════════════════════════════
+   단체 상세
+════════════════════════════════ */
+function openDetail(orgCode){
+  const entry=orgsData[orgCode];
+  if(!entry)return;
+  const d=entry.data;
+  const s=calcOrgStats(d);
+
+  document.getElementById('detail-title').textContent=`${d.orgName||orgCode} — 집행현황 상세`;
+
+  // 비목별 현황
+  const catRows=ITEMS.map(cat=>{
+    const alloc=d.budget?.[cat]||0;
+    if(!alloc) return '';
+    const spent=(d.resolutions||[]).reduce((sum,r)=>
+      sum+(r.items||[]).filter(i=>i.category===cat).reduce((s,i)=>s+(Number(i.amount)||0)+(Number(i.vat)||0),0),0);
+    const remain=alloc-spent;
+    const rate=Math.round(spent/alloc*100);
+    const color=remain<0?'#dc2626':rate>=70?'#d97706':'#2d6a4f';
+    return `<tr class="${remain<0?'over-row':''}">
+      <td class="left"><strong>${cat}</strong></td>
+      <td class="amt">${fmtAmt(alloc)}</td>
+      <td class="amt" style="color:${color};font-weight:700;">${fmtAmt(spent)}</td>
+      <td class="amt" style="color:${remain<0?'#dc2626':'inherit'};font-weight:${remain<0?700:400};">${fmtAmt(remain)}</td>
+      <td style="color:${color};font-weight:700;">${rate}%</td>
+      <td><div class="progress-bar-wrap"><div class="progress-bar" style="width:${Math.min(rate,100)}%;background:${color};"></div></div></td>
+    </tr>`;
+  }).join('');
+
+  // 결의서 목록
+  const resRows=[...(d.resolutions||[])].reverse().map(r=>{
+    const total=(r.items||[]).reduce((s,i)=>s+(Number(i.amount)||0)+(Number(i.vat)||0),0);
+    const cats=[...new Set((r.items||[]).map(i=>i.category))].join(', ');
+    return `<tr>
+      <td><strong>${r.resNo}</strong></td>
+      <td>${fmtDate(r.payDate)}</td>
+      <td class="left">${cats}</td>
+      <td>${(r.items||[]).length}건</td>
+      <td class="amt"><strong>${fmtAmt(total)}</strong></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('detail-content').innerHTML=`
+    <div class="stat-grid" style="margin-bottom:16px;">
+      <div class="stat-card"><div class="label">총 교부예산</div><div class="value">${fmtAmt(s.totalBudget)} 원</div></div>
+      <div class="stat-card"><div class="label">총 집행금액</div><div class="value green">${fmtAmt(s.totalSpent)} 원</div></div>
+      <div class="stat-card"><div class="label">잔액</div><div class="value ${s.remain<0?'red':'orange'}">${fmtAmt(s.remain)} 원</div></div>
+      <div class="stat-card"><div class="label">집행률</div><div class="value ${s.rate>=90?'red':s.rate>=70?'orange':'green'}">${s.rate}%</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">💰 비목별 집행현황</div>
+      <div class="card-body">
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead><tr><th>비목</th><th>배정예산</th><th>집행금액</th><th>잔액</th><th>집행률</th><th>진행상황</th></tr></thead>
+            <tbody>${catRows||'<tr><td colspan="6" style="color:#9ca3af;padding:20px;">비목별 예산 미설정</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">📄 지출결의서 목록</div>
+      <div class="card-body">
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead><tr><th>결의번호</th><th>지출일자</th><th>비목</th><th>항목수</th><th>합계금액</th></tr></thead>
+            <tbody>${resRows||'<tr><td colspan="5" style="color:#9ca3af;padding:20px;">결의서 없음</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('org-list-panel').style.display='none';
+  document.getElementById('detail-panel').style.display='block';
+  document.getElementById('summary-stats').style.display='none';
+}
+
+function closeDetail(){
+  document.getElementById('detail-panel').style.display='none';
+  document.getElementById('org-list-panel').style.display='block';
+  document.getElementById('summary-stats').style.display='grid';
+}
+
+/* ════════════════════════════════
+   최근 지출내역 (전체)
+════════════════════════════════ */
+function renderRecentAll(){
+  const allEntries=[];
+  Object.entries(orgsData).forEach(([orgCode,entry])=>{
+    const d=entry.data;
+    (d.resolutions||[]).forEach(r=>{
+      (r.items||[]).forEach(i=>{
+        allEntries.push({
+          orgName:d.orgName||orgCode,
+          resNo:r.resNo,
+          payDate:r.payDate,
+          category:i.category,
+          payee:i.payee,
+          content:i.content,
+          total:(Number(i.amount)||0)+(Number(i.vat)||0),
+          syncedAt:entry.syncedAt
+        });
+      });
+    });
+  });
+  allEntries.sort((a,b)=>(b.payDate||'').localeCompare(a.payDate||''));
+  const tbody=document.getElementById('recent-all-tbody');
+  const empty=document.getElementById('recent-empty');
+  if(!allEntries.length){tbody.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  tbody.innerHTML=allEntries.slice(0,50).map(e=>`<tr>
+    <td class="left"><strong>${e.orgName}</strong></td>
+    <td>${e.resNo}</td>
+    <td>${fmtDate(e.payDate)}</td>
+    <td>${e.category||''}</td>
+    <td>${e.payee||''}</td>
+    <td class="left">${(e.content||'').slice(0,28)}${(e.content||'').length>28?'…':''}</td>
+    <td class="amt"><strong>${fmtAmt(e.total)}</strong></td>
+    <td style="font-size:11px;color:#9ca3af;">${fmtDateTime(e.syncedAt)}</td>
+  </tr>`).join('');
+}
+
+/* ════════════════════════════════
+   JSON 파일 불러오기
+════════════════════════════════ */
+function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag-over');
+  processFiles(Array.from(e.dataTransfer.files));
+}
+function handleFileInput(e){
+  processFiles(Array.from(e.target.files));
+}
+
+function processFiles(files){
+  const jsonFiles=files.filter(f=>f.name.endsWith('.json'));
+  if(!jsonFiles.length){toast('❌ JSON 파일만 불러올 수 있습니다.');return;}
+  const log=document.getElementById('import-log');
+  log.innerHTML='';
+  let loaded=0;
+  jsonFiles.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=(ev)=>{
+      try{
+        const d=JSON.parse(ev.target.result);
+        const orgCode=d.orgCode||(d.orgName?d.orgName.slice(0,6):'UNKNOWN');
+        orgsData[orgCode]={data:d,syncedAt:d.exportedAt||new Date().toISOString(),source:'json'};
+        loaded++;
+        log.innerHTML+=`<div style="padding:6px 10px;background:#f0fdf4;border-left:3px solid #2d6a4f;border-radius:4px;margin-bottom:6px;font-size:13px;">
+          ✅ <strong>${file.name}</strong> → 단체코드: <code>${orgCode}</code> (${d.orgName||''}) · 결의서 ${(d.resolutions||[]).length}건
+        </div>`;
+        if(loaded===jsonFiles.length){
+          saveLocal();
+          renderImportedList();
+          renderDashboard();
+          toast(`✅ ${loaded}개 파일 불러오기 완료`);
+        }
+      }catch(err){
+        log.innerHTML+=`<div style="padding:6px 10px;background:#fff5f5;border-left:3px solid #dc2626;border-radius:4px;margin-bottom:6px;font-size:13px;">
+          ❌ <strong>${file.name}</strong> 오류: ${err.message}
+        </div>`;
+      }
+    };
+    reader.readAsText(file,'utf-8');
+  });
+}
+
+function renderImportedList(){
+  const el=document.getElementById('imported-list');
+  const entries=Object.entries(orgsData);
+  if(!entries.length){el.innerHTML='<div style="text-align:center;padding:20px;color:#9ca3af;">불러온 파일이 없습니다.</div>';return;}
+  el.innerHTML=`<table class="data-table">
+    <thead><tr><th>단체코드</th><th>단체명</th><th>사업명</th><th>결의서수</th><th>동기화시각</th><th>출처</th><th>삭제</th></tr></thead>
+    <tbody>${entries.map(([orgCode,entry])=>`<tr>
+      <td><code>${orgCode}</code></td>
+      <td class="left"><strong>${entry.data.orgName||'-'}</strong></td>
+      <td class="left">${entry.data.projName||'-'}</td>
+      <td>${(entry.data.resolutions||[]).length}건</td>
+      <td style="font-size:11px;">${fmtDateTime(entry.syncedAt)}</td>
+      <td><span style="font-size:11px;">${entry.source==='json'?'📂 JSON':'🔗 자동'}</span></td>
+      <td><button class="btn btn-outline btn-sm" style="color:#dc2626;border-color:#fca5a5;" onclick="removeOrg('${orgCode}')">삭제</button></td>
+    </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+function removeOrg(orgCode){
+  if(!confirm(`[${orgCode}] 데이터를 삭제하시겠습니까?`))return;
+  delete orgsData[orgCode];
+  saveLocal();
+  renderImportedList();
+  renderDashboard();
+  toast('🗑️ 삭제 완료');
+}
+
+function clearImported(){
+  orgsData={};
+  saveLocal();
+  renderImportedList();
+  renderDashboard();
+  toast('🗑️ 모든 데이터 삭제 완료');
+}
+
+/* ════════════════════════════════
+   전체 내보내기
+════════════════════════════════ */
+function exportAll(){
+  if(!Object.keys(orgsData).length){toast('❌ 내보낼 데이터가 없습니다.');return;}
+  const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),orgs:orgsData},null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,16);
+  a.href=url;a.download=`센터모니터링_전체_${ts}.json`;a.click();
+  URL.revokeObjectURL(url);
+  toast('💾 전체 데이터 내보내기 완료');
+}
+
+/* ════════════════════════════════
+   Gas Code Copy
+════════════════════════════════ */
+function copyGasCode(){
+  const code=document.getElementById('gas-code-block').textContent;
+  navigator.clipboard.writeText(code).then(()=>toast('📋 코드가 클립보드에 복사되었습니다.')).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=code;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+    toast('📋 코드 복사 완료');
+  });
+}
+
+/* ════════════════════════════════
+   초기화
+════════════════════════════════ */
+(function init(){
+  if(gasUrl) document.getElementById('gas-url').value=gasUrl;
+  renderDashboard();
+  // 자동 새로고침 (5분마다, GAS URL 설정 시)
+  setInterval(()=>{if(gasUrl) fetchFromGas();},5*60*1000);
+})();
+</script>
+</body>
+</html>
