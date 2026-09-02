@@ -89,9 +89,12 @@ input,select,textarea,button{font-family:inherit;}
   <div>
     <h1>🕒 직원 근태현황 · 초과근무 관리</h1>
     <div class="sub">안양시공익활동지원센터 · 근태입력 / 월별현황 / 초과근무대장</div>
+    <div id="sync-status" style="font-size:11px;opacity:.8;margin-top:4px;">저장소 동기화 확인 중...</div>
   </div>
   <div class="header-actions">
-    <button class="btn btn-outline" style="font-size:12px;padding:6px 14px;" onclick="exportBackup()">💾 데이터 백업(JSON)</button>
+    <button class="btn btn-outline" style="font-size:12px;padding:6px 14px;" onclick="fetchRemoteData(true)">🔄 저장소에서 불러오기</button>
+    <button class="btn btn-outline" style="font-size:12px;padding:6px 14px;" onclick="exportForRepo()">📤 저장소 커밋용 파일 내보내기</button>
+    <button class="btn btn-outline" style="font-size:12px;padding:6px 14px;" onclick="exportBackup()">💾 개인 백업(JSON)</button>
     <label class="btn btn-outline" style="font-size:12px;padding:6px 14px;cursor:pointer;">
       📂 백업 불러오기<input type="file" accept=".json" style="display:none" onchange="importBackup(event)">
     </label>
@@ -254,6 +257,15 @@ input,select,textarea,button{font-family:inherit;}
 
 <!-- ════════════ ④ 설정 ════════════ -->
 <div id="tab-settings" class="tab-panel">
+  <div class="note-box">
+    <b>📦 저장소 동기화 안내</b><br>
+    이 도구의 데이터는 각자의 브라우저(로컬저장소)에만 저장됩니다. 여러 기기·브라우저에서 같은 근태 이력을 보려면
+    저장소(GitHub)의 <code>data/attendance-data.json</code> 파일로 월별 근태 데이터를 관리해야 합니다.<br>
+    ① 한 달 근태 입력이 끝나면 상단의 <b>📤 저장소 커밋용 파일 내보내기</b>로 <code>attendance-data.json</code>을 받아 저장소의
+    <code>data/attendance-data.json</code>에 덮어써 커밋합니다.<br>
+    ② 다른 기기·브라우저에서 이 페이지를 열면 자동으로(또는 상단 <b>🔄 저장소에서 불러오기</b> 버튼으로) 그 파일을 불러와
+    로컬에 없는 기록만 추가로 반영합니다(기존 로컬 편집 내용은 덮어쓰지 않습니다).
+  </div>
   <div class="card">
     <div class="card-header">👤 직원 정보 · 단가</div>
     <div class="card-body">
@@ -918,6 +930,56 @@ function importBackup(evt){
 }
 
 /* ════════════════════════════════
+   저장소 동기화 (data/attendance-data.json)
+   - 이 파일은 git 저장소에 커밋되는 "월별 근태 스냅샷" 공식 데이터입니다.
+   - 페이지 로드시 저장소 파일을 불러와 로컬에 없는 항목만 추가합니다(로컬 편집 내용은 덮어쓰지 않음).
+   - 입력이 끝난 달은 "저장소 커밋용 파일 내보내기"로 data/attendance-data.json을 교체해 커밋하세요.
+════════════════════════════════ */
+function fetchRemoteData(manual){
+  const statusEl=document.getElementById('sync-status');
+  if(manual) statusEl.textContent='🔄 저장소 데이터 확인 중...';
+  fetch('data/attendance-data.json',{cache:'no-store'})
+    .then(r=>{if(!r.ok) throw new Error('HTTP '+r.status);return r.json();})
+    .then(data=>mergeRemoteData(data,manual))
+    .catch(err=>{
+      statusEl.textContent=manual?('❌ 저장소 데이터를 불러오지 못했습니다: '+err.message):'⚠️ 저장소 데이터 없음(로컬 데이터만 사용 중)';
+      if(manual) toast('❌ 저장소 데이터를 불러오지 못했습니다.');
+    });
+}
+
+function mergeRemoteData(data,manual){
+  let addedRecords=0,addedEmp=0,addedHol=0;
+  const localEmpIds=new Set(employees.map(e=>e.id));
+  (data.employees||[]).forEach(e=>{if(!localEmpIds.has(e.id)){employees.push(e);localEmpIds.add(e.id);addedEmp++;}});
+  const localHolSet=new Set(holidays.map(h=>h[0]));
+  (data.holidays||[]).forEach(h=>{if(!localHolSet.has(h[0])){holidays.push(h);localHolSet.add(h[0]);addedHol++;}});
+  const localRecKeys=new Set(records.map(r=>`${r.empId}__${r.date}`));
+  (data.records||[]).forEach(r=>{const k=`${r.empId}__${r.date}`;if(!localRecKeys.has(k)){records.push(r);localRecKeys.add(k);addedRecords++;}});
+  Object.keys(data.thresholds||{}).forEach(k=>{if(!(k in thresholds)) thresholds[k]=data.thresholds[k];});
+  Object.keys(data.openings||{}).forEach(k=>{if(!(k in openings)) openings[k]=data.openings[k];});
+
+  if(addedEmp||addedHol||addedRecords){
+    save('attn_employees',employees);save('attn_holidays',holidays);save('attn_records',records);
+    save('attn_thresholds',thresholds);save('attn_openings',openings);
+    fillEmpSelects();renderList();
+    if(document.getElementById('tab-settings').classList.contains('active')) renderSettings();
+  }
+  const ts=data.updatedAt?new Date(data.updatedAt).toLocaleString('ko-KR'):'-';
+  document.getElementById('sync-status').textContent=`✅ 저장소 동기화됨 (기준: ${ts}, 신규 반영 ${addedRecords}건)`;
+  if(manual) toast(`🔄 저장소 데이터 확인 완료 (신규 ${addedRecords}건 반영)`);
+}
+
+function exportForRepo(){
+  const data={employees,holidays,records,thresholds,openings,updatedAt:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='attendance-data.json';a.click();
+  URL.revokeObjectURL(url);
+  toast('📤 data/attendance-data.json 파일로 교체 후 커밋하세요.');
+}
+
+/* ════════════════════════════════
    초기화
 ════════════════════════════════ */
 (function init(){
@@ -928,6 +990,7 @@ function importBackup(evt){
   document.getElementById('ld-month').value=curYM();
   onTypeChange();
   renderList();
+  fetchRemoteData(false);
 })();
 </script>
 </body>
