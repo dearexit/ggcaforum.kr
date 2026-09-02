@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>직원 근태현황 · 초과근무 관리</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* ── 기본 (센터모니터링.html 스타일 준용) ── */
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'맑은 고딕','Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0f2f5;color:#1a1a1a;font-size:14px;}
+input,select,textarea,button{font-family:inherit;}
+
+.app-header{background:linear-gradient(135deg,#1b3a6b,#0f766e);color:#fff;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.25);}
+.app-header h1{font-size:18px;font-weight:700;letter-spacing:.03em;}
+.app-header .sub{font-size:12px;opacity:.75;margin-top:2px;}
+.header-actions{display:flex;gap:8px;align-items:center;}
+
+.tabs{background:#fff;border-bottom:2px solid #e0e4eb;display:flex;gap:0;padding:0 24px;box-shadow:0 1px 4px rgba(0,0,0,.06);flex-wrap:wrap;}
+.tab-btn{padding:13px 22px;border:none;background:transparent;cursor:pointer;font-size:13.5px;font-weight:600;color:#6b7280;border-bottom:3px solid transparent;margin-bottom:-2px;transition:color .2s,border-color .2s;white-space:nowrap;}
+.tab-btn.active{color:#0f766e;border-bottom-color:#0f766e;}
+.tab-btn:hover:not(.active){color:#374151;}
+
+.tab-panel{display:none;padding:24px 28px 48px;}
+.tab-panel.active{display:block;}
+
+.card{background:#fff;border-radius:10px;border:1px solid #e5e7eb;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:20px;overflow:hidden;}
+.card-header{background:#f8f9fb;border-bottom:1px solid #e5e7eb;padding:12px 18px;font-weight:700;font-size:13.5px;color:#1b3a6b;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.card-body{padding:18px;}
+
+.form-row{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;}
+.form-group{display:flex;flex-direction:column;gap:5px;flex:1;min-width:150px;}
+.form-group label{font-size:12px;font-weight:600;color:#374151;}
+.form-group input,.form-group select,.form-group textarea{padding:9px 12px;border:1px solid #d1d5db;border-radius:7px;font-size:13.5px;background:#fafafa;transition:border-color .2s;}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:#0f766e;box-shadow:0 0 0 3px rgba(15,118,110,.1);background:#fff;}
+
+.btn{padding:9px 22px;border-radius:7px;border:none;cursor:pointer;font-size:13.5px;font-weight:700;transition:all .15s;}
+.btn-primary{background:#0f766e;color:#fff;}
+.btn-primary:hover{background:#0c5f58;}
+.btn-blue{background:#1b3a6b;color:#fff;}
+.btn-blue:hover{background:#15305c;}
+.btn-outline{background:#fff;border:1.5px solid #d1d5db;color:#374151;}
+.btn-outline:hover{border-color:#0f766e;color:#0f766e;}
+.btn-danger{background:#fff;border:1.5px solid #fca5a5;color:#dc2626;}
+.btn-danger:hover{background:#fef2f2;}
+.btn-sm{padding:6px 14px;font-size:12px;}
+
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:20px;}
+.stat-card{background:#fff;border-radius:10px;border:1px solid #e5e7eb;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+.stat-card .label{font-size:11.5px;color:#6b7280;font-weight:600;margin-bottom:6px;}
+.stat-card .value{font-size:19px;font-weight:700;color:#1b3a6b;}
+.stat-card .value.green{color:#0f766e;}
+.stat-card .value.red{color:#dc2626;}
+.stat-card .value.orange{color:#d97706;}
+
+.data-table{width:100%;border-collapse:collapse;font-size:12.8px;}
+.data-table th{background:#1b3a6b;color:#fff;padding:9px 10px;text-align:center;font-weight:600;white-space:nowrap;}
+.data-table td{padding:7px 9px;border:1px solid #e5e7eb;text-align:center;vertical-align:middle;}
+.data-table tr:nth-child(even) td{background:#f9fafb;}
+.data-table tr:hover td{background:#f0f9f8;}
+.data-table .left{text-align:left;}
+.data-table input,.data-table select{width:100%;padding:4px 6px;font-size:12.5px;border:1px solid #d1d5db;border-radius:5px;}
+.holiday-row td{background:#fff5f5!important;}
+.tag{display:inline-block;padding:2px 8px;border-radius:12px;font-size:10.5px;font-weight:700;}
+.tag.red{background:#fee2e2;color:#dc2626;}
+.tag.blue{background:#dbeafe;color:#1d4ed8;}
+.tag.green{background:#dcfce7;color:#15803d;}
+.tag.gray{background:#f3f4f6;color:#6b7280;}
+.tag.orange{background:#fef3c7;color:#92400e;}
+
+.emp-pill{display:inline-flex;gap:6px;padding:6px 14px;border-radius:20px;border:1.5px solid #d1d5db;background:#fff;cursor:pointer;font-size:13px;font-weight:600;color:#374151;}
+.emp-pill.active{border-color:#0f766e;background:#0f766e;color:#fff;}
+
+#toast{position:fixed;bottom:28px;right:28px;background:#1b3a6b;color:#fff;padding:12px 22px;border-radius:10px;font-size:13.5px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.25);opacity:0;transform:translateY(10px);transition:all .3s;pointer-events:none;z-index:9999;}
+#toast.show{opacity:1;transform:translateY(0);}
+
+.note-box{padding:12px 14px;background:#f0fdfa;border:1px solid #ccfbf1;border-radius:8px;font-size:12.5px;color:#0f766e;line-height:1.7;margin-bottom:14px;}
+.warn-box{padding:12px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:12.5px;color:#92400e;line-height:1.7;margin-bottom:14px;}
+
+@media(max-width:640px){
+  .app-header{flex-direction:column;align-items:flex-start;gap:10px;}
+  .stat-grid{grid-template-columns:1fr 1fr;}
+}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div>
+    <h1>🕒 직원 근태현황 · 초과근무 관리</h1>
+    <div class="sub">안양시공익활동지원센터 · 근태입력 / 월별현황 / 초과근무대장</div>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-outline" style="font-size:12px;padding:6px 14px;" onclick="exportBackup()">💾 데이터 백업(JSON)</button>
+    <label class="btn btn-outline" style="font-size:12px;padding:6px 14px;cursor:pointer;">
+      📂 백업 불러오기<input type="file" accept=".json" style="display:none" onchange="importBackup(event)">
+    </label>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('tab-input',this)">📅 일별 근태입력</button>
+  <button class="tab-btn" onclick="switchTab('tab-monthly',this)">📊 월별 근태현황</button>
+  <button class="tab-btn" onclick="switchTab('tab-ledger',this)">📒 초과근무대장</button>
+  <button class="tab-btn" onclick="switchTab('tab-settings',this)">⚙️ 설정</button>
+</div>
+
+<!-- ════════════ ① 일별 근태입력 ════════════ -->
+<div id="tab-input" class="tab-panel active">
+  <div class="card">
+    <div class="card-header">➕ 근태 기록 입력</div>
+    <div class="card-body">
+      <div class="form-row">
+        <div class="form-group" style="min-width:120px;">
+          <label>직원</label>
+          <select id="in-emp"></select>
+        </div>
+        <div class="form-group" style="min-width:150px;">
+          <label>일자</label>
+          <input type="date" id="in-date">
+        </div>
+        <div class="form-group" style="min-width:110px;">
+          <label>구분</label>
+          <select id="in-type" onchange="onTypeChange()">
+            <option value="work-auto">근무(출퇴근시각 입력)</option>
+            <option value="work-manual">근무(수동 입력 · 현장퇴근/전자결재 기준)</option>
+            <option value="leave">휴가/휴무</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="fields-work-auto" class="form-row" style="margin-top:10px;">
+        <div class="form-group"><label>출근시각</label><input type="time" id="in-checkin" value="09:00"></div>
+        <div class="form-group"><label>퇴근시각</label><input type="time" id="in-checkout" value="18:00"></div>
+      </div>
+
+      <div id="fields-work-manual" class="form-row" style="margin-top:10px;display:none;">
+        <div class="form-group">
+          <label>초과근무 구분</label>
+          <select id="in-manual-cat">
+            <option value="weekday_ot">평일초과</option>
+            <option value="weekday_night">평일야간(22~06시)</option>
+            <option value="holiday_work">휴일근무</option>
+            <option value="holiday_ext_night">휴일연장·야간</option>
+          </select>
+        </div>
+        <div class="form-group"><label>시간(h)</label><input type="number" id="in-manual-hours" step="0.25" min="0" value="0"></div>
+      </div>
+
+      <div id="fields-leave" class="form-row" style="margin-top:10px;display:none;">
+        <div class="form-group">
+          <label>휴가 종류</label>
+          <select id="in-leave-type">
+            <option value="연차">연차</option>
+            <option value="반차">반차</option>
+            <option value="공가">공가</option>
+            <option value="보상휴가">보상휴가</option>
+            <option value="무급휴가">무급휴가</option>
+          </select>
+        </div>
+        <div class="form-group"><label>시간(h)</label><input type="number" id="in-leave-hours" step="0.5" min="0" value="8"></div>
+      </div>
+
+      <div class="form-row" style="margin-top:10px;">
+        <div class="form-group" style="min-width:300px;flex:2;"><label>비고</label><input type="text" id="in-note" placeholder="예: 전자결재 신청건 확인요망, 지문 미인식 등"></div>
+        <div style="padding-bottom:1px;"><button class="btn btn-primary" onclick="addRecord()">저장</button></div>
+      </div>
+      <div id="in-status" style="margin-top:8px;font-size:12px;color:#6b7280;"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span>📋 기록 목록</span>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="list-emp" onchange="renderList()" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:12.5px;"></select>
+        <input type="month" id="list-month" onchange="renderList()" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:12.5px;">
+      </div>
+    </div>
+    <div class="card-body">
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <thead><tr><th>일자</th><th>요일/공휴일</th><th>구분</th><th>내용</th><th>비고</th><th>삭제</th></tr></thead>
+          <tbody id="list-tbody"></tbody>
+        </table>
+      </div>
+      <div id="list-empty" style="display:none;text-align:center;padding:30px;color:#9ca3af;">기록이 없습니다.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ ② 월별 근태현황 ════════════ -->
+<div id="tab-monthly" class="tab-panel">
+  <div class="card">
+    <div class="card-header">
+      <span>📊 월별 근태현황 조회</span>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="mo-emp" onchange="renderMonthly()" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:12.5px;"></select>
+        <input type="month" id="mo-month" onchange="renderMonthly()" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:12.5px;">
+        <button class="btn btn-outline btn-sm" onclick="exportMonthlyExcel()">📥 엑셀로 내보내기</button>
+        <button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ 인쇄</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div id="mo-stats" class="stat-grid"></div>
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <thead><tr><th>일자</th><th>요일</th><th>출근</th><th>퇴근</th><th>평일초과</th><th>평일야간</th><th>휴일근무</th><th>휴일연장·야간</th><th>휴가</th><th>비고</th></tr></thead>
+          <tbody id="mo-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ ③ 초과근무대장 ════════════ -->
+<div id="tab-ledger" class="tab-panel">
+  <div class="note-box">FIFO 원칙: 해당 월 초과근무 합계 중 <b>지급기준(35h/50h)</b>까지는 수당으로 지급하고, 초과분은 1.5배로 환산하여 보상휴가로 적립합니다. 지급기준은 예산 상황에 따라 직원·월별로 변경할 수 있습니다.</div>
+  <div class="card">
+    <div class="card-header">
+      <span>📒 월별 초과근무대장</span>
+      <input type="month" id="ld-month" onchange="renderLedger()" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:12.5px;">
+    </div>
+    <div class="card-body">
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <thead><tr>
+            <th>성명</th><th>직급</th><th>초과근무 발생(h)</th><th>지급기준</th><th>지급시간(h)</th><th>발생수당(원)</th>
+            <th>보상휴가 발생(h)</th><th>보상휴가 사용(h)</th><th>보상휴가 잔여(h)</th>
+            <th>연차 발생(h)</th><th>연차 사용(h)</th><th>연차 잔여(h)</th>
+          </tr></thead>
+          <tbody id="ld-tbody"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-outline btn-sm" onclick="exportLedgerExcel()">📥 대장 엑셀로 내보내기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">📈 직원별 월별 이력</div>
+    <div class="card-body">
+      <select id="ld-hist-emp" onchange="renderLedgerHistory()" style="padding:7px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;margin-bottom:12px;"></select>
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <thead><tr><th>월</th><th>초과근무발생(h)</th><th>지급기준</th><th>지급시간(h)</th><th>발생수당(원)</th><th>보상휴가잔여(h)</th><th>연차잔여(h)</th></tr></thead>
+          <tbody id="ld-hist-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ ④ 설정 ════════════ -->
+<div id="tab-settings" class="tab-panel">
+  <div class="card">
+    <div class="card-header">👤 직원 정보 · 단가</div>
+    <div class="card-body">
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <thead><tr><th>성명</th><th>직급</th><th>입사일</th><th>시간당 통상임금(원)</th></tr></thead>
+          <tbody id="set-emp-tbody"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:12px;"><button class="btn btn-primary btn-sm" onclick="saveEmployeeSettings()">저장</button></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">📌 기초 잔여시간 (도구 사용 시작 시점의 보상휴가·연차 잔여)</div>
+    <div class="card-body">
+      <div class="warn-box">기존에 사용하던 대장의 잔여시간이 있다면, 그 <b>기준월</b>과 잔여시간(h)을 입력하세요. 이후 달의 발생/사용은 이 값을 기초로 누적 계산됩니다.</div>
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <thead><tr><th>성명</th><th>기준월(이 달 말 기준)</th><th>보상휴가 잔여(h)</th><th>연차 잔여(h)</th></tr></thead>
+          <tbody id="set-open-tbody"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:12px;"><button class="btn btn-primary btn-sm" onclick="saveOpeningSettings()">저장</button></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">🗓️ 공휴일 목록</div>
+    <div class="card-body">
+      <div class="warn-box">2026년 공휴일이 기본 입력되어 있습니다(음력 기준 공휴일은 오차가 있을 수 있으니 확인 후 수정하세요). 주말은 별도 입력 없이 자동으로 휴일로 처리됩니다.</div>
+      <div class="form-row" style="margin-bottom:14px;">
+        <div class="form-group"><label>날짜</label><input type="date" id="hol-date"></div>
+        <div class="form-group"><label>명칭</label><input type="text" id="hol-name" placeholder="예: 임시공휴일"></div>
+        <div style="padding-bottom:1px;"><button class="btn btn-primary btn-sm" onclick="addHoliday()">추가</button></div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <thead><tr><th>날짜</th><th>명칭</th><th>삭제</th></tr></thead>
+          <tbody id="hol-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">⚠️ 위험 구역</div>
+    <div class="card-body">
+      <button class="btn btn-danger btn-sm" onclick="if(confirm('모든 근태 기록을 삭제하시겠습니까? 되돌릴 수 없습니다.'))resetAllRecords()">🗑️ 전체 근태기록 삭제</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ════════════════════════════════
+   기본 데이터
+════════════════════════════════ */
+const DEFAULT_EMPLOYEES=[
+  {id:'centerhead',name:'천희',role:'센터장',hireDate:'2025-08-11',rate:0},
+  {id:'teamlead',name:'진은종',role:'팀장',hireDate:'2025-08-04',rate:0},
+  {id:'staff',name:'서지영',role:'팀원',hireDate:'',rate:0}
+];
+const DEFAULT_HOLIDAYS=[
+  ['2026-01-01','신정'],
+  ['2026-02-16','설날연휴'],['2026-02-17','설날'],['2026-02-18','설날연휴'],
+  ['2026-03-01','삼일절'],['2026-03-02','대체공휴일(삼일절)'],
+  ['2026-05-05','어린이날'],
+  ['2026-05-24','부처님오신날'],['2026-05-25','대체공휴일(부처님오신날)'],
+  ['2026-06-06','현충일'],
+  ['2026-07-17','제헌절'],
+  ['2026-08-15','광복절'],['2026-08-17','대체공휴일(광복절)'],
+  ['2026-09-24','추석연휴'],['2026-09-25','추석'],['2026-09-26','추석연휴'],
+  ['2026-10-03','개천절'],['2026-10-05','대체공휴일(개천절)'],
+  ['2026-10-09','한글날'],
+  ['2026-12-25','성탄절']
+];
+const CAT_LABELS={weekday_ot:'평일초과',weekday_night:'평일야간',holiday_work:'휴일근무',holiday_ext_night:'휴일연장·야간'};
+
+/* ════════════════════════════════
+   저장소
+════════════════════════════════ */
+function load(key,def){try{const v=localStorage.getItem(key);return v?JSON.parse(v):def;}catch(e){return def;}}
+function save(key,val){try{localStorage.setItem(key,JSON.stringify(val));}catch(e){}}
+
+let employees=load('attn_employees',DEFAULT_EMPLOYEES);
+let holidays=load('attn_holidays',DEFAULT_HOLIDAYS);
+let records=load('attn_records',[]);
+let thresholds=load('attn_thresholds',{});   // key `${empId}_${yyyymm}` -> 35|50
+let openings=load('attn_openings',{});       // key empId -> {ym, comp, annual}
+
+function holidaySet(){return new Set(holidays.map(h=>h[0]));}
+function isHoliday(dateStr){
+  const d=new Date(dateStr+'T00:00:00');
+  if(d.getDay()===0||d.getDay()===6) return true;
+  return holidaySet().has(dateStr);
+}
+function holidayName(dateStr){
+  const h=holidays.find(x=>x[0]===dateStr);
+  if(h) return h[1];
+  const d=new Date(dateStr+'T00:00:00');
+  if(d.getDay()===0) return '일요일';
+  if(d.getDay()===6) return '토요일';
+  return '';
+}
+const WEEKDAY_KR=['일','월','화','수','목','금','토'];
+
+/* ════════════════════════════════
+   유틸
+════════════════════════════════ */
+function toast(msg,dur=2600){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),dur);}
+function uid(){return 'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+function empName(id){const e=employees.find(x=>x.id===id);return e?e.name:id;}
+function empById(id){return employees.find(x=>x.id===id);}
+function hhmm(h){const sign=h<0?'-':'';h=Math.abs(h);const totalMin=Math.round(h*60);return `${sign}${String(Math.floor(totalMin/60)).padStart(2,'0')}:${String(totalMin%60).padStart(2,'0')}`;}
+function fmtH(h){return (Math.round(h*100)/100).toFixed(2);}
+function fmtAmt(n){return Math.round(n||0).toLocaleString('ko-KR');}
+function ymOf(dateStr){return dateStr.slice(0,7);}
+function daysInMonth(ym){const[y,m]=ym.split('-').map(Number);return new Date(y,m,0).getDate();}
+function monthRangeDates(ym){const n=daysInMonth(ym);const arr=[];for(let d=1;d<=n;d++)arr.push(`${ym}-${String(d).padStart(2,'0')}`);return arr;}
+function prevYM(ym){const[y,m]=ym.split('-').map(Number);const d=new Date(y,m-2,1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;}
+function ymCompare(a,b){return a<b?-1:(a>b?1:0);}
+
+/* ════════════════════════════════
+   일별 근무시간 계산 엔진
+════════════════════════════════ */
+function minutesOverlap(s1,e1,s2,e2){const s=Math.max(s1,s2),e=Math.min(e1,e2);return Math.max(0,(e-s)/60000);}
+
+function nightAndDayMinutes(ci,co){
+  // ci,co: Date 객체(co>ci). 06:00~22:00=주간, 22:00~06:00=야간 구간 합계(분)
+  let night=0;
+  let cur=new Date(ci);cur.setDate(cur.getDate()-1);cur.setHours(0,0,0,0);
+  const stop=new Date(co);
+  while(cur<=stop){
+    const ns=new Date(cur);ns.setHours(22,0,0,0);
+    const ne=new Date(cur);ne.setDate(ne.getDate()+1);ne.setHours(6,0,0,0);
+    night+=minutesOverlap(ci,co,ns,ne);
+    cur.setDate(cur.getDate()+1);
+  }
+  const total=(co-ci)/60000;
+  const day=total-night;
+  return {day,night,total};
+}
+
+function breakMinutesFor(totalMin){
+  if(totalMin>=8*60) return 60;
+  if(totalMin>=4*60) return 30;
+  return 0;
+}
+
+// 근무 1건(출퇴근시각) -> 4개 카테고리 시간(h)
+function computeAutoWork(dateStr,checkin,checkout){
+  let ci=new Date(`${dateStr}T${checkin}:00`);
+  let co=new Date(`${dateStr}T${checkout}:00`);
+  if(co<=ci) co=new Date(co.getTime()+24*3600*1000);
+  const totalMin=(co-ci)/60000;
+  const brk=breakMinutesFor(totalMin);
+  const cats={weekday_ot:0,weekday_night:0,holiday_work:0,holiday_ext_night:0};
+
+  if(isHoliday(dateStr)){
+    const {day,night}=nightAndDayMinutes(ci,co);
+    let rem=brk;
+    let dayNet=Math.max(0,day-rem);rem=Math.max(0,rem-day);
+    let nightNet=Math.max(0,night-rem);
+    const holReg=Math.min(dayNet,480);
+    const holExt=Math.max(0,dayNet-480)+nightNet;
+    cats.holiday_work=holReg/60;
+    cats.holiday_ext_night=holExt/60;
+  }else{
+    const schedS=new Date(`${dateStr}T09:00:00`);
+    const schedE=new Date(`${dateStr}T18:00:00`);
+    const rawSched=minutesOverlap(ci,co,schedS,schedE);
+    const {night:rawNight}=nightAndDayMinutes(ci,co);
+    const rawOther=Math.max(0,totalMin-rawSched-rawNight);
+    let rem=brk;
+    let schedNet=Math.max(0,rawSched-rem);rem=Math.max(0,rem-rawSched);
+    let otherNet=Math.max(0,rawOther-rem);rem=Math.max(0,rem-rawOther);
+    let nightNet=Math.max(0,rawNight-rem);
+    cats.weekday_ot=otherNet/60;
+    cats.weekday_night=nightNet/60;
+  }
+  return cats;
+}
+
+function computeRecordCats(r){
+  if(r.type==='leave') return {weekday_ot:0,weekday_night:0,holiday_work:0,holiday_ext_night:0};
+  if(r.mode==='manual'){
+    const c={weekday_ot:0,weekday_night:0,holiday_work:0,holiday_ext_night:0};
+    c[r.manualCat]=Number(r.manualHours)||0;
+    return c;
+  }
+  return computeAutoWork(r.date,r.checkin,r.checkout);
+}
+
+/* ════════════════════════════════
+   연차 발생(근로기준법 제60조, 월 1일 / 1년+ 는 매 1년 시점 일괄부여)
+════════════════════════════════ */
+function calcAnnualLeaveMonthly(hireDate,ym){
+  if(!hireDate) return 0;
+  const [hy,hm]=hireDate.split('-').map(Number);
+  const [y,m]=ym.split('-').map(Number);
+  const monthsElapsed=(y*12+m)-(hy*12+hm);
+  if(monthsElapsed<=0) return 0;
+  if(monthsElapsed<12) return 8.0; // 개근시 1일(8h) 발생 - 입사 다음달부터
+  if(monthsElapsed%12===0){
+    const years=monthsElapsed/12;
+    const days=Math.min(15+Math.floor((years-1)/2),25);
+    return days*8.0;
+  }
+  return 0;
+}
+
+/* ════════════════════════════════
+   월별 집계 (직원 1인, 특정 월)
+════════════════════════════════ */
+function threshold(empId,ym){
+  return thresholds[`${empId}_${ym}`]||50;
+}
+function setThreshold(empId,ym,val){
+  thresholds[`${empId}_${ym}`]=Number(val);
+  save('attn_thresholds',thresholds);
+}
+
+function monthRecords(empId,ym){
+  return records.filter(r=>r.empId===empId && ymOf(r.date)===ym).sort((a,b)=>a.date.localeCompare(b.date));
+}
+
+function summarizeMonth(empId,ym){
+  const recs=monthRecords(empId,ym);
+  const cats={weekday_ot:0,weekday_night:0,holiday_work:0,holiday_ext_night:0};
+  const leave={연차:0,반차:0,공가:0,보상휴가:0,무급휴가:0};
+  recs.forEach(r=>{
+    if(r.type==='leave'){leave[r.leaveType]=(leave[r.leaveType]||0)+(Number(r.leaveHours)||0);}
+    else{
+      const c=computeRecordCats(r);
+      Object.keys(cats).forEach(k=>cats[k]+=c[k]);
+    }
+  });
+  const totalExtra=Object.values(cats).reduce((a,b)=>a+b,0);
+  const th=threshold(empId,ym);
+  const paidHours=Math.min(totalExtra,th);
+  const compEarn=Math.max(0,totalExtra-th)*1.5;
+  const emp=empById(empId)||{rate:0};
+  const payAmount=Math.round(paidHours*1.5*(Number(emp.rate)||0));
+  const annualEarn=calcAnnualLeaveMonthly(emp.hireDate,ym);
+  const compUsed=leave['보상휴가']||0;
+  const annualUsed=(leave['연차']||0)+(leave['반차']||0);
+  return {empId,ym,cats,totalExtra,threshold:th,paidHours,compEarn,payAmount,annualEarn,compUsed,annualUsed,leave,recs};
+}
+
+// 기초잔여부터 대상월까지 누적하여 잔여시간 이력 계산
+function ledgerHistory(empId,uptoYm){
+  const opening=openings[empId];
+  let startYm, compRemain=0, annualRemain=0;
+  const emp=empById(empId);
+  if(opening && opening.ym){
+    startYm=nextYM(opening.ym);
+    compRemain=Number(opening.comp)||0;
+    annualRemain=Number(opening.annual)||0;
+  }else if(emp && emp.hireDate){
+    startYm=emp.hireDate.slice(0,7);
+  }else{
+    startYm=uptoYm;
+  }
+  const hist=[];
+  let ym=startYm;
+  let guard=0;
+  while(ymCompare(ym,uptoYm)<=0 && guard<1200){
+    guard++;
+    const s=summarizeMonth(empId,ym);
+    compRemain=compRemain+s.compEarn-s.compUsed;
+    annualRemain=annualRemain+s.annualEarn-s.annualUsed;
+    hist.push({...s,compRemain,annualRemain});
+    if(ym===uptoYm) break;
+    ym=nextYM(ym);
+  }
+  return hist;
+}
+function nextYM(ym){const[y,m]=ym.split('-').map(Number);const d=new Date(y,m,1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;}
+
+/* ════════════════════════════════
+   탭 전환
+════════════════════════════════ */
+function switchTab(id,btn){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='tab-monthly') renderMonthly();
+  if(id==='tab-ledger'){renderLedger();renderLedgerHistory();}
+  if(id==='tab-settings') renderSettings();
+}
+
+/* ════════════════════════════════
+   셀렉트박스 채우기
+════════════════════════════════ */
+function fillEmpSelects(){
+  const opts=employees.map(e=>`<option value="${e.id}">${e.name} (${e.role})</option>`).join('');
+  ['in-emp','list-emp','mo-emp','ld-hist-emp'].forEach(id=>{
+    const el=document.getElementById(id);
+    const prev=el.value;
+    el.innerHTML=opts;
+    if(prev) el.value=prev;
+  });
+}
+
+function todayStr(){return new Date().toISOString().slice(0,10);}
+function curYM(){return new Date().toISOString().slice(0,7);}
+
+/* ════════════════════════════════
+   ① 일별 근태입력
+════════════════════════════════ */
+function onTypeChange(){
+  const t=document.getElementById('in-type').value;
+  document.getElementById('fields-work-auto').style.display=t==='work-auto'?'flex':'none';
+  document.getElementById('fields-work-manual').style.display=t==='work-manual'?'flex':'none';
+  document.getElementById('fields-leave').style.display=t==='leave'?'flex':'none';
+}
+
+function addRecord(){
+  const empId=document.getElementById('in-emp').value;
+  const date=document.getElementById('in-date').value;
+  const type=document.getElementById('in-type').value;
+  const note=document.getElementById('in-note').value.trim();
+  if(!date){toast('❌ 일자를 입력하세요.');return;}
+  const rec={id:uid(),empId,date,note};
+  if(type==='work-auto'){
+    rec.type='work';rec.mode='auto';
+    rec.checkin=document.getElementById('in-checkin').value;
+    rec.checkout=document.getElementById('in-checkout').value;
+    if(!rec.checkin||!rec.checkout){toast('❌ 출퇴근시각을 입력하세요.');return;}
+  }else if(type==='work-manual'){
+    rec.type='work';rec.mode='manual';
+    rec.manualCat=document.getElementById('in-manual-cat').value;
+    rec.manualHours=Number(document.getElementById('in-manual-hours').value)||0;
+  }else{
+    rec.type='leave';
+    rec.leaveType=document.getElementById('in-leave-type').value;
+    rec.leaveHours=Number(document.getElementById('in-leave-hours').value)||0;
+  }
+  // 같은 직원+같은 날짜 기존 기록이 있으면 확인 후 교체
+  const existingIdx=records.findIndex(r=>r.empId===empId&&r.date===date);
+  if(existingIdx>=0){
+    if(!confirm(`${empName(empId)} ${date} 기록이 이미 있습니다. 교체하시겠습니까?`))return;
+    records[existingIdx]=rec;
+  }else{
+    records.push(rec);
+  }
+  save('attn_records',records);
+  document.getElementById('in-status').textContent=`✅ ${date} 저장 완료`;
+  document.getElementById('list-month').value=ymOf(date);
+  document.getElementById('list-emp').value=empId;
+  renderList();
+  toast('✅ 저장되었습니다.');
+}
+
+function renderList(){
+  const empId=document.getElementById('list-emp').value;
+  const ym=document.getElementById('list-month').value||curYM();
+  const recs=records.filter(r=>r.empId===empId&&ymOf(r.date)===ym).sort((a,b)=>a.date.localeCompare(b.date));
+  const tbody=document.getElementById('list-tbody');
+  const empty=document.getElementById('list-empty');
+  if(!recs.length){tbody.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  tbody.innerHTML=recs.map(r=>{
+    const dow=WEEKDAY_KR[new Date(r.date+'T00:00:00').getDay()];
+    const hol=isHoliday(r.date);
+    const holTxt=hol?`<span class="tag red">${holidayName(r.date)||'휴일'}</span>`:`<span class="tag gray">${dow}</span>`;
+    let content='';
+    if(r.type==='leave'){
+      content=`<span class="tag blue">${r.leaveType}</span> ${fmtH(r.leaveHours)}h`;
+    }else if(r.mode==='manual'){
+      content=`<span class="tag orange">수동</span> ${CAT_LABELS[r.manualCat]} ${fmtH(r.manualHours)}h`;
+    }else{
+      const c=computeAutoWork(r.date,r.checkin,r.checkout);
+      const extra=Object.entries(c).filter(([k,v])=>v>0.001).map(([k,v])=>`${CAT_LABELS[k]} ${fmtH(v)}h`).join(', ');
+      content=`${r.checkin}~${r.checkout}${extra?` <span class="tag green">${extra}</span>`:''}`;
+    }
+    return `<tr class="${hol?'holiday-row':''}">
+      <td>${r.date}</td><td>${holTxt}</td>
+      <td>${r.type==='leave'?'휴가':(r.mode==='manual'?'근무(수동)':'근무')}</td>
+      <td class="left">${content}</td>
+      <td class="left">${r.note||''}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteRecord('${r.id}')">삭제</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function deleteRecord(id){
+  if(!confirm('이 기록을 삭제하시겠습니까?'))return;
+  records=records.filter(r=>r.id!==id);
+  save('attn_records',records);
+  renderList();
+  toast('🗑️ 삭제되었습니다.');
+}
+
+/* ════════════════════════════════
+   ② 월별 근태현황
+════════════════════════════════ */
+function renderMonthly(){
+  const empId=document.getElementById('mo-emp').value;
+  const ym=document.getElementById('mo-month').value||curYM();
+  const s=summarizeMonth(empId,ym);
+  document.getElementById('mo-stats').innerHTML=`
+    <div class="stat-card"><div class="label">평일초과</div><div class="value">${hhmm(s.cats.weekday_ot)}</div></div>
+    <div class="stat-card"><div class="label">평일야간</div><div class="value">${hhmm(s.cats.weekday_night)}</div></div>
+    <div class="stat-card"><div class="label">휴일근무</div><div class="value">${hhmm(s.cats.holiday_work)}</div></div>
+    <div class="stat-card"><div class="label">휴일연장·야간</div><div class="value">${hhmm(s.cats.holiday_ext_night)}</div></div>
+    <div class="stat-card"><div class="label">초과근무 합계</div><div class="value green">${hhmm(s.totalExtra)}</div></div>
+    <div class="stat-card"><div class="label">지급기준</div><div class="value">${s.threshold}h</div></div>
+    <div class="stat-card"><div class="label">지급시간</div><div class="value">${hhmm(s.paidHours)}</div></div>
+    <div class="stat-card"><div class="label">발생수당</div><div class="value orange">${fmtAmt(s.payAmount)}원</div></div>
+    <div class="stat-card"><div class="label">보상휴가 발생</div><div class="value">${hhmm(s.compEarn)}</div></div>
+    <div class="stat-card"><div class="label">연차 발생</div><div class="value">${hhmm(s.annualEarn)}</div></div>`;
+
+  const dates=monthRangeDates(ym);
+  document.getElementById('mo-tbody').innerHTML=dates.map(date=>{
+    const rec=records.find(r=>r.empId===empId&&r.date===date);
+    const dow=WEEKDAY_KR[new Date(date+'T00:00:00').getDay()];
+    const hol=isHoliday(date);
+    let ci='',co='',cats={weekday_ot:0,weekday_night:0,holiday_work:0,holiday_ext_night:0},leaveTxt='',note='';
+    if(rec){
+      note=rec.note||'';
+      if(rec.type==='leave'){leaveTxt=`${rec.leaveType} ${fmtH(rec.leaveHours)}h`;}
+      else if(rec.mode==='manual'){cats=computeRecordCats(rec);ci='(수동)';co=CAT_LABELS[rec.manualCat];}
+      else{ci=rec.checkin;co=rec.checkout;cats=computeAutoWork(rec.date,rec.checkin,rec.checkout);}
+    }
+    return `<tr class="${hol?'holiday-row':''}">
+      <td>${date.slice(8)}</td><td>${hol?`<span class="tag red">${dow}</span>`:dow}</td>
+      <td>${ci}</td><td>${co}</td>
+      <td>${cats.weekday_ot>0.001?hhmm(cats.weekday_ot):''}</td>
+      <td>${cats.weekday_night>0.001?hhmm(cats.weekday_night):''}</td>
+      <td>${cats.holiday_work>0.001?hhmm(cats.holiday_work):''}</td>
+      <td>${cats.holiday_ext_night>0.001?hhmm(cats.holiday_ext_night):''}</td>
+      <td>${leaveTxt}</td>
+      <td class="left">${note}</td>
+    </tr>`;
+  }).join('');
+}
+
+function exportMonthlyExcel(){
+  const empId=document.getElementById('mo-emp').value;
+  const ym=document.getElementById('mo-month').value||curYM();
+  const emp=empById(empId);
+  const s=summarizeMonth(empId,ym);
+  const dates=monthRangeDates(ym);
+  const rows=[['근태현황',`${ym} · ${emp.name}(${emp.role})`],[],
+    ['일자','요일','출근','퇴근','평일초과','평일야간','휴일근무','휴일연장·야간','휴가','비고']];
+  dates.forEach(date=>{
+    const rec=records.find(r=>r.empId===empId&&r.date===date);
+    const dow=WEEKDAY_KR[new Date(date+'T00:00:00').getDay()];
+    let ci='',co='',cats={weekday_ot:0,weekday_night:0,holiday_work:0,holiday_ext_night:0},leaveTxt='',note='';
+    if(rec){
+      note=rec.note||'';
+      if(rec.type==='leave'){leaveTxt=`${rec.leaveType} ${fmtH(rec.leaveHours)}h`;}
+      else if(rec.mode==='manual'){cats=computeRecordCats(rec);ci='(수동)';co=CAT_LABELS[rec.manualCat];}
+      else{ci=rec.checkin;co=rec.checkout;cats=computeAutoWork(rec.date,rec.checkin,rec.checkout);}
+    }
+    rows.push([date,dow,ci,co,
+      cats.weekday_ot>0.001?fmtH(cats.weekday_ot):'',
+      cats.weekday_night>0.001?fmtH(cats.weekday_night):'',
+      cats.holiday_work>0.001?fmtH(cats.holiday_work):'',
+      cats.holiday_ext_night>0.001?fmtH(cats.holiday_ext_night):'',
+      leaveTxt,note]);
+  });
+  rows.push([]);
+  rows.push(['평일초과 합계',fmtH(s.cats.weekday_ot),'평일야간 합계',fmtH(s.cats.weekday_night)]);
+  rows.push(['휴일근무 합계',fmtH(s.cats.holiday_work),'휴일연장·야간 합계',fmtH(s.cats.holiday_ext_night)]);
+  rows.push(['초과근무 합계(h)',fmtH(s.totalExtra),'지급기준(h)',s.threshold]);
+  rows.push(['지급시간(h)',fmtH(s.paidHours),'발생수당(원)',s.payAmount]);
+  rows.push(['보상휴가 발생(h)',fmtH(s.compEarn),'연차 발생(h)',fmtH(s.annualEarn)]);
+
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'근태현황');
+  const mm=ym.split('-')[1];
+  XLSX.writeFile(wb,`근태현황 ${Number(mm)}월_${emp.name}.xlsx`);
+  toast('📥 엑셀 파일이 생성되었습니다.');
+}
+
+/* ════════════════════════════════
+   ③ 초과근무대장
+════════════════════════════════ */
+function renderLedger(){
+  const ym=document.getElementById('ld-month').value||curYM();
+  document.getElementById('ld-tbody').innerHTML=employees.map(emp=>{
+    const hist=ledgerHistory(emp.id,ym);
+    const cur=hist[hist.length-1];
+    if(!cur){
+      return `<tr><td class="left">${emp.name}</td><td>${emp.role}</td>${'<td>-</td>'.repeat(10)}</tr>`;
+    }
+    return `<tr>
+      <td class="left"><strong>${emp.name}</strong></td><td>${emp.role}</td>
+      <td>${hhmm(cur.totalExtra)}</td>
+      <td><select onchange="onThresholdChange('${emp.id}','${ym}',this.value)">
+        <option value="50" ${cur.threshold===50?'selected':''}>50시간</option>
+        <option value="35" ${cur.threshold===35?'selected':''}>35시간</option>
+      </select></td>
+      <td>${hhmm(cur.paidHours)}</td>
+      <td class="amt">${fmtAmt(cur.payAmount)}</td>
+      <td>${hhmm(cur.compEarn)}</td>
+      <td>${hhmm(cur.compUsed)}</td>
+      <td><strong>${hhmm(cur.compRemain)}</strong></td>
+      <td>${hhmm(cur.annualEarn)}</td>
+      <td>${hhmm(cur.annualUsed)}</td>
+      <td><strong>${hhmm(cur.annualRemain)}</strong></td>
+    </tr>`;
+  }).join('');
+}
+
+function onThresholdChange(empId,ym,val){
+  setThreshold(empId,ym,val);
+  renderLedger();
+  renderLedgerHistory();
+  toast(`✅ ${empName(empId)} ${ym} 지급기준을 ${val}시간으로 변경했습니다.`);
+}
+
+function renderLedgerHistory(){
+  const empId=document.getElementById('ld-hist-emp').value;
+  const ym=document.getElementById('ld-month').value||curYM();
+  const hist=ledgerHistory(empId,ym);
+  document.getElementById('ld-hist-tbody').innerHTML=[...hist].reverse().map(s=>`<tr>
+    <td>${s.ym}</td><td>${hhmm(s.totalExtra)}</td><td>${s.threshold}h</td><td>${hhmm(s.paidHours)}</td>
+    <td class="amt">${fmtAmt(s.payAmount)}</td><td>${hhmm(s.compRemain)}</td><td>${hhmm(s.annualRemain)}</td>
+  </tr>`).join('') || '<tr><td colspan="7" style="color:#9ca3af;padding:20px;">이력이 없습니다.</td></tr>';
+}
+
+function exportLedgerExcel(){
+  const ym=document.getElementById('ld-month').value||curYM();
+  const wb=XLSX.utils.book_new();
+  const summaryRows=[['초과근무대장',ym],[],
+    ['성명','직급','초과근무발생(h)','지급기준(h)','지급시간(h)','발생수당(원)','보상휴가발생(h)','보상휴가사용(h)','보상휴가잔여(h)','연차발생(h)','연차사용(h)','연차잔여(h)']];
+  employees.forEach(emp=>{
+    const hist=ledgerHistory(emp.id,ym);
+    const cur=hist[hist.length-1];
+    if(cur) summaryRows.push([emp.name,emp.role,fmtH(cur.totalExtra),cur.threshold,fmtH(cur.paidHours),cur.payAmount,
+      fmtH(cur.compEarn),fmtH(cur.compUsed),fmtH(cur.compRemain),fmtH(cur.annualEarn),fmtH(cur.annualUsed),fmtH(cur.annualRemain)]);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(summaryRows),'초과근무대장');
+
+  employees.forEach(emp=>{
+    const hist=ledgerHistory(emp.id,ym);
+    const rows=[[`${emp.name} 월별 이력`],[],
+      ['월','초과근무발생(h)','지급기준(h)','지급시간(h)','발생수당(원)','보상휴가발생(h)','보상휴가사용(h)','보상휴가잔여(h)','연차발생(h)','연차사용(h)','연차잔여(h)']];
+    hist.forEach(s=>rows.push([s.ym,fmtH(s.totalExtra),s.threshold,fmtH(s.paidHours),s.payAmount,
+      fmtH(s.compEarn),fmtH(s.compUsed),fmtH(s.compRemain),fmtH(s.annualEarn),fmtH(s.annualUsed),fmtH(s.annualRemain)]));
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),emp.name);
+  });
+
+  const ts=ym.replace('-','');
+  XLSX.writeFile(wb,`초과근무대장_${ts}.xlsx`);
+  toast('📥 대장 엑셀 파일이 생성되었습니다.');
+}
+
+/* ════════════════════════════════
+   ④ 설정
+════════════════════════════════ */
+function renderSettings(){
+  document.getElementById('set-emp-tbody').innerHTML=employees.map((e,i)=>`<tr>
+    <td>${e.name}</td><td>${e.role}</td>
+    <td><input type="date" value="${e.hireDate||''}" onchange="employees[${i}].hireDate=this.value"></td>
+    <td><input type="number" min="0" step="10" value="${e.rate||0}" onchange="employees[${i}].rate=Number(this.value)"></td>
+  </tr>`).join('');
+
+  document.getElementById('set-open-tbody').innerHTML=employees.map(e=>{
+    const o=openings[e.id]||{ym:'',comp:0,annual:0};
+    return `<tr>
+      <td class="left"><strong>${e.name}</strong></td>
+      <td><input type="month" value="${o.ym||''}" onchange="setOpeningField('${e.id}','ym',this.value)"></td>
+      <td><input type="number" step="0.5" value="${o.comp||0}" onchange="setOpeningField('${e.id}','comp',this.value)"></td>
+      <td><input type="number" step="0.5" value="${o.annual||0}" onchange="setOpeningField('${e.id}','annual',this.value)"></td>
+    </tr>`;
+  }).join('');
+
+  renderHolidayList();
+}
+
+function setOpeningField(empId,field,val){
+  if(!openings[empId]) openings[empId]={ym:'',comp:0,annual:0};
+  openings[empId][field]=field==='ym'?val:Number(val);
+}
+
+function saveEmployeeSettings(){
+  save('attn_employees',employees);
+  fillEmpSelects();
+  toast('✅ 직원 정보가 저장되었습니다.');
+}
+
+function saveOpeningSettings(){
+  save('attn_openings',openings);
+  toast('✅ 기초 잔여시간이 저장되었습니다.');
+}
+
+function renderHolidayList(){
+  document.getElementById('hol-tbody').innerHTML=[...holidays].sort((a,b)=>a[0].localeCompare(b[0])).map(h=>`<tr>
+    <td>${h[0]}</td><td class="left">${h[1]}</td>
+    <td><button class="btn btn-danger btn-sm" onclick="deleteHoliday('${h[0]}')">삭제</button></td>
+  </tr>`).join('');
+}
+
+function addHoliday(){
+  const date=document.getElementById('hol-date').value;
+  const name=document.getElementById('hol-name').value.trim()||'공휴일';
+  if(!date){toast('❌ 날짜를 입력하세요.');return;}
+  if(holidays.some(h=>h[0]===date)){toast('❌ 이미 등록된 날짜입니다.');return;}
+  holidays.push([date,name]);
+  save('attn_holidays',holidays);
+  renderHolidayList();
+  document.getElementById('hol-date').value='';
+  document.getElementById('hol-name').value='';
+  toast('✅ 공휴일이 추가되었습니다.');
+}
+
+function deleteHoliday(date){
+  holidays=holidays.filter(h=>h[0]!==date);
+  save('attn_holidays',holidays);
+  renderHolidayList();
+}
+
+function resetAllRecords(){
+  records=[];
+  save('attn_records',records);
+  renderList();
+  toast('🗑️ 전체 근태기록이 삭제되었습니다.');
+}
+
+/* ════════════════════════════════
+   백업/복원
+════════════════════════════════ */
+function exportBackup(){
+  const data={employees,holidays,records,thresholds,openings,exportedAt:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`근태현황_백업_${new Date().toISOString().slice(0,10)}.json`;a.click();
+  URL.revokeObjectURL(url);
+  toast('💾 백업 파일이 생성되었습니다.');
+}
+
+function importBackup(evt){
+  const file=evt.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(data.employees) employees=data.employees;
+      if(data.holidays) holidays=data.holidays;
+      if(data.records) records=data.records;
+      if(data.thresholds) thresholds=data.thresholds;
+      if(data.openings) openings=data.openings;
+      save('attn_employees',employees);save('attn_holidays',holidays);save('attn_records',records);
+      save('attn_thresholds',thresholds);save('attn_openings',openings);
+      fillEmpSelects();
+      renderList();renderSettings();
+      toast('✅ 백업 데이터를 불러왔습니다.');
+    }catch(err){toast('❌ 파일을 읽을 수 없습니다: '+err.message);}
+  };
+  reader.readAsText(file,'utf-8');
+  evt.target.value='';
+}
+
+/* ════════════════════════════════
+   초기화
+════════════════════════════════ */
+(function init(){
+  fillEmpSelects();
+  document.getElementById('in-date').value=todayStr();
+  document.getElementById('list-month').value=curYM();
+  document.getElementById('mo-month').value=curYM();
+  document.getElementById('ld-month').value=curYM();
+  onTypeChange();
+  renderList();
+})();
+</script>
+</body>
+</html>
