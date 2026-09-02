@@ -1,26 +1,777 @@
 {
   "_readme": "이 파일은 근태현황.html(직원 근태현황 웹도구)의 저장소 공식 데이터입니다. 매월 근태 입력이 끝나면 웹도구의 '설정 > 저장소 동기화 파일 내보내기'로 받은 파일 내용을 이 파일에 반영하여 커밋하세요. 브라우저(localStorage)의 최신 편집 내용이 우선이며, 이 파일은 다른 기기/브라우저에서 열었을 때의 공식 기준값(baseline) 역할을 합니다.",
-  "updatedAt": "2026-09-02T00:00:00.000Z",
+  "updatedAt": "2026-09-02T05:00:00.000Z",
   "employees": [
-    {"id": "centerhead", "name": "천희", "role": "센터장", "hireDate": "2025-08-11", "rate": 0},
-    {"id": "teamlead", "name": "진은종", "role": "팀장", "hireDate": "2025-08-04", "rate": 0},
-    {"id": "staff", "name": "서지영", "role": "팀원", "hireDate": "", "rate": 0}
+    {
+      "id": "centerhead",
+      "name": "천희",
+      "role": "센터장",
+      "hireDate": "2025-08-11",
+      "rate": 0
+    },
+    {
+      "id": "teamlead",
+      "name": "진은종",
+      "role": "팀장",
+      "hireDate": "2025-08-04",
+      "rate": 0
+    },
+    {
+      "id": "staff",
+      "name": "서지영",
+      "role": "팀원",
+      "hireDate": "",
+      "rate": 0
+    }
   ],
   "holidays": [
-    ["2026-01-01", "신정"],
-    ["2026-02-16", "설날연휴"], ["2026-02-17", "설날"], ["2026-02-18", "설날연휴"],
-    ["2026-03-01", "삼일절"], ["2026-03-02", "대체공휴일(삼일절)"],
-    ["2026-05-05", "어린이날"],
-    ["2026-05-24", "부처님오신날"], ["2026-05-25", "대체공휴일(부처님오신날)"],
-    ["2026-06-06", "현충일"],
-    ["2026-07-17", "제헌절"],
-    ["2026-08-15", "광복절"], ["2026-08-17", "대체공휴일(광복절)"],
-    ["2026-09-24", "추석연휴"], ["2026-09-25", "추석"], ["2026-09-26", "추석연휴"],
-    ["2026-10-03", "개천절"], ["2026-10-05", "대체공휴일(개천절)"],
-    ["2026-10-09", "한글날"],
-    ["2026-12-25", "성탄절"]
+    [
+      "2026-01-01",
+      "신정"
+    ],
+    [
+      "2026-02-16",
+      "설날연휴"
+    ],
+    [
+      "2026-02-17",
+      "설날"
+    ],
+    [
+      "2026-02-18",
+      "설날연휴"
+    ],
+    [
+      "2026-03-01",
+      "삼일절"
+    ],
+    [
+      "2026-03-02",
+      "대체공휴일(삼일절)"
+    ],
+    [
+      "2026-05-05",
+      "어린이날"
+    ],
+    [
+      "2026-05-24",
+      "부처님오신날"
+    ],
+    [
+      "2026-05-25",
+      "대체공휴일(부처님오신날)"
+    ],
+    [
+      "2026-06-06",
+      "현충일"
+    ],
+    [
+      "2026-07-17",
+      "제헌절"
+    ],
+    [
+      "2026-08-15",
+      "광복절"
+    ],
+    [
+      "2026-08-17",
+      "대체공휴일(광복절)"
+    ],
+    [
+      "2026-09-24",
+      "추석연휴"
+    ],
+    [
+      "2026-09-25",
+      "추석"
+    ],
+    [
+      "2026-09-26",
+      "추석연휴"
+    ],
+    [
+      "2026-10-03",
+      "개천절"
+    ],
+    [
+      "2026-10-05",
+      "대체공휴일(개천절)"
+    ],
+    [
+      "2026-10-09",
+      "한글날"
+    ],
+    [
+      "2026-12-25",
+      "성탄절"
+    ]
   ],
-  "records": [],
+  "records": [
+    {
+      "id": "r6e6cd14ed6",
+      "empId": "teamlead",
+      "date": "2026-08-01",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "13:54",
+      "checkout": "19:51",
+      "note": ""
+    },
+    {
+      "id": "rd1557283a2",
+      "empId": "teamlead",
+      "date": "2026-08-03",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:57",
+      "checkout": "18:32",
+      "note": ""
+    },
+    {
+      "id": "r1b6bbf265a",
+      "empId": "teamlead",
+      "date": "2026-08-04",
+      "type": "leave",
+      "leaveType": "연차",
+      "leaveHours": 8,
+      "note": "전자결재 8/4~8/7 연차(4일) - 지문기록 없음"
+    },
+    {
+      "id": "r573abb4e81",
+      "empId": "teamlead",
+      "date": "2026-08-05",
+      "type": "leave",
+      "leaveType": "연차",
+      "leaveHours": 8,
+      "note": "전자결재 8/4~8/7 연차(4일) - 지문기록 없음"
+    },
+    {
+      "id": "r57f7fa77c7",
+      "empId": "teamlead",
+      "date": "2026-08-06",
+      "type": "leave",
+      "leaveType": "연차",
+      "leaveHours": 8,
+      "note": "전자결재 8/4~8/7 연차(4일) - 지문기록 없음"
+    },
+    {
+      "id": "r714d05df34",
+      "empId": "teamlead",
+      "date": "2026-08-07",
+      "type": "leave",
+      "leaveType": "연차",
+      "leaveHours": 8,
+      "note": "전자결재 8/4~8/7 연차(4일) - 지문기록 없음"
+    },
+    {
+      "id": "r7d5d3266a9",
+      "empId": "teamlead",
+      "date": "2026-08-08",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "13:51",
+      "checkout": "19:04",
+      "note": ""
+    },
+    {
+      "id": "r79fa4a3054",
+      "empId": "teamlead",
+      "date": "2026-08-09",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "15:14",
+      "checkout": "17:50",
+      "note": ""
+    },
+    {
+      "id": "r31cc98d42d",
+      "empId": "teamlead",
+      "date": "2026-08-10",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:54",
+      "checkout": "00:00",
+      "note": ""
+    },
+    {
+      "id": "r9d8ee4cb94",
+      "empId": "teamlead",
+      "date": "2026-08-11",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:52",
+      "checkout": "21:08",
+      "note": ""
+    },
+    {
+      "id": "ra14a9244d8",
+      "empId": "teamlead",
+      "date": "2026-08-12",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "09:24",
+      "checkout": "23:09",
+      "note": "외출17:09~귀사20:47 있음(정상 복귀, 근무시간 계산에는 출퇴근시각만 반영)"
+    },
+    {
+      "id": "r34b82d411a",
+      "empId": "teamlead",
+      "date": "2026-08-13",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:43",
+      "checkout": "18:34",
+      "note": ""
+    },
+    {
+      "id": "r124f9c91b8",
+      "empId": "teamlead",
+      "date": "2026-08-14",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:57",
+      "checkout": "21:00",
+      "note": "현장퇴근(외출 후 미복귀) - 전자결재 근태현황 \"9:00~21:00\" 기준으로 퇴근시각 반영. 동일자 3h/2.5h(18:00~21:00) 중복신청 있음(참고)."
+    },
+    {
+      "id": "r9930e13c20",
+      "empId": "teamlead",
+      "date": "2026-08-18",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:51",
+      "checkout": "21:32",
+      "note": ""
+    },
+    {
+      "id": "r387c6bdccd",
+      "empId": "teamlead",
+      "date": "2026-08-19",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:51",
+      "checkout": "23:35",
+      "note": ""
+    },
+    {
+      "id": "r2cb775a109",
+      "empId": "teamlead",
+      "date": "2026-08-20",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:48",
+      "checkout": "18:37",
+      "note": ""
+    },
+    {
+      "id": "r4e7c194817",
+      "empId": "teamlead",
+      "date": "2026-08-21",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:53",
+      "checkout": "22:37",
+      "note": ""
+    },
+    {
+      "id": "r3dd1ba7c3b",
+      "empId": "teamlead",
+      "date": "2026-08-22",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "09:41",
+      "checkout": "18:30",
+      "note": ""
+    },
+    {
+      "id": "rf34867d5bd",
+      "empId": "teamlead",
+      "date": "2026-08-24",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:59",
+      "checkout": "18:34",
+      "note": ""
+    },
+    {
+      "id": "r8c5f49a666",
+      "empId": "teamlead",
+      "date": "2026-08-25",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:49",
+      "checkout": "18:00",
+      "note": "확인요망: 퇴근 지문 누락 → 18:00 임시 처리"
+    },
+    {
+      "id": "r07e40b0621",
+      "empId": "teamlead",
+      "date": "2026-08-26",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:48",
+      "checkout": "16:13",
+      "note": ""
+    },
+    {
+      "id": "rcc29121424",
+      "empId": "teamlead",
+      "date": "2026-08-27",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:53",
+      "checkout": "21:42",
+      "note": ""
+    },
+    {
+      "id": "r51080623a6",
+      "empId": "teamlead",
+      "date": "2026-08-28",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:46",
+      "checkout": "18:00",
+      "note": "확인요망: 퇴근 지문 누락 → 18:00 임시 처리"
+    },
+    {
+      "id": "r77002e69d1",
+      "empId": "teamlead",
+      "date": "2026-08-29",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "10:04",
+      "checkout": "16:00",
+      "note": "전자결재 휴일근무(토) \"10:00~16:00\" 확인 - 퇴근 지문 없어 신청시각 기준 반영"
+    },
+    {
+      "id": "r8b3f750ad7",
+      "empId": "teamlead",
+      "date": "2026-08-31",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:58",
+      "checkout": "18:17",
+      "note": ""
+    },
+    {
+      "id": "r413a4e0250",
+      "empId": "staff",
+      "date": "2026-08-03",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:12",
+      "checkout": "18:00",
+      "note": "확인요망: 퇴근 지문 누락 → 18:00 임시 처리"
+    },
+    {
+      "id": "r039a957412",
+      "empId": "staff",
+      "date": "2026-08-04",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:16",
+      "checkout": "19:38",
+      "note": ""
+    },
+    {
+      "id": "rb3facd29f9",
+      "empId": "staff",
+      "date": "2026-08-05",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:12",
+      "checkout": "21:48",
+      "note": ""
+    },
+    {
+      "id": "r3c05e43f92",
+      "empId": "staff",
+      "date": "2026-08-06",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:11",
+      "checkout": "23:09",
+      "note": ""
+    },
+    {
+      "id": "r8dffb620a5",
+      "empId": "staff",
+      "date": "2026-08-07",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:04",
+      "checkout": "22:41",
+      "note": ""
+    },
+    {
+      "id": "ra20d606ef8",
+      "empId": "staff",
+      "date": "2026-08-08",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:27",
+      "checkout": "20:49",
+      "note": ""
+    },
+    {
+      "id": "r1a7616e73b",
+      "empId": "staff",
+      "date": "2026-08-10",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:14",
+      "checkout": "22:55",
+      "note": ""
+    },
+    {
+      "id": "rae8b9282f0",
+      "empId": "staff",
+      "date": "2026-08-11",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:21",
+      "checkout": "20:01",
+      "note": ""
+    },
+    {
+      "id": "rf9aa689796",
+      "empId": "staff",
+      "date": "2026-08-12",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:14",
+      "checkout": "21:02",
+      "note": "외출17:09~귀사21:01 있음(정상 복귀). 퇴근 중복스캔(21:01/21:02) 중 마지막 값 반영"
+    },
+    {
+      "id": "r69c880bf5c",
+      "empId": "staff",
+      "date": "2026-08-13",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:03",
+      "checkout": "18:37",
+      "note": ""
+    },
+    {
+      "id": "r759bcba270",
+      "empId": "staff",
+      "date": "2026-08-14",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:17",
+      "checkout": "21:00",
+      "note": "현장퇴근(외출 후 미복귀) - 전자결재 근태현황 \"9:00~21:00\" 기준으로 퇴근시각 반영. 동일자 2.5h(18:00~21:00) 중복신청 있음(참고)."
+    },
+    {
+      "id": "rece35992c9",
+      "empId": "staff",
+      "date": "2026-08-18",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:17",
+      "checkout": "18:14",
+      "note": ""
+    },
+    {
+      "id": "rdfc39aa7ba",
+      "empId": "staff",
+      "date": "2026-08-19",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:14",
+      "checkout": "18:00",
+      "note": "확인요망: 퇴근 지문 누락 → 18:00 임시 처리"
+    },
+    {
+      "id": "re0405bb62c",
+      "empId": "staff",
+      "date": "2026-08-20",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:12",
+      "checkout": "21:05",
+      "note": ""
+    },
+    {
+      "id": "r3cf129b9b9",
+      "empId": "staff",
+      "date": "2026-08-21",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:25",
+      "checkout": "20:25",
+      "note": ""
+    },
+    {
+      "id": "r2b66539496",
+      "empId": "staff",
+      "date": "2026-08-24",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:11",
+      "checkout": "18:07",
+      "note": ""
+    },
+    {
+      "id": "r444fb5bea6",
+      "empId": "staff",
+      "date": "2026-08-25",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:11",
+      "checkout": "18:00",
+      "note": "확인요망: 퇴근 지문 누락 → 18:00 임시 처리"
+    },
+    {
+      "id": "r648efc687b",
+      "empId": "staff",
+      "date": "2026-08-26",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:14",
+      "checkout": "18:06",
+      "note": "외출09:19~귀사11:36(관내출장) 있음(정상 복귀)"
+    },
+    {
+      "id": "r646ff70c4e",
+      "empId": "staff",
+      "date": "2026-08-27",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:22",
+      "checkout": "18:00",
+      "note": "확인요망: 퇴근 지문 누락 → 18:00 임시 처리"
+    },
+    {
+      "id": "r0fa33a083a",
+      "empId": "staff",
+      "date": "2026-08-28",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:15",
+      "checkout": "18:49",
+      "note": ""
+    },
+    {
+      "id": "r094011a6f6",
+      "empId": "staff",
+      "date": "2026-08-29",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "09:00",
+      "checkout": "14:16",
+      "note": "확인요망: 출근 지문 누락(외출·귀사만 기록됨). 전자결재상 휴일근무 \"9:00~18:00\" 신청 있으나 퇴근 지문(14:16) 기준 반영 - 조기퇴근 여부 확인요망"
+    },
+    {
+      "id": "ra939884691",
+      "empId": "staff",
+      "date": "2026-08-31",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:19",
+      "checkout": "18:03",
+      "note": ""
+    },
+    {
+      "id": "ra9dd7c223b",
+      "empId": "centerhead",
+      "date": "2026-08-03",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:55",
+      "checkout": "23:36",
+      "note": ""
+    },
+    {
+      "id": "r5b2171b71e",
+      "empId": "centerhead",
+      "date": "2026-08-04",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:59",
+      "checkout": "19:38",
+      "note": ""
+    },
+    {
+      "id": "re6f422589b",
+      "empId": "centerhead",
+      "date": "2026-08-05",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "09:54",
+      "checkout": "21:48",
+      "note": "전자결재 09:00~10:00 보상휴가 1h 신청 있음(별도 반영 필요, 도구상 동일자 근무+휴가 동시입력 불가)"
+    },
+    {
+      "id": "rd702522fae",
+      "empId": "centerhead",
+      "date": "2026-08-06",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "09:12",
+      "checkout": "21:12",
+      "note": "전자결재 09:00~09:30 보상휴가 0.5h 신청 있음(별도 반영 필요)"
+    },
+    {
+      "id": "r7037c7196c",
+      "empId": "centerhead",
+      "date": "2026-08-07",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:52",
+      "checkout": "23:08",
+      "note": ""
+    },
+    {
+      "id": "rb12bf2cc2e",
+      "empId": "centerhead",
+      "date": "2026-08-08",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "12:00",
+      "checkout": "19:41",
+      "note": "확인요망: 출근 지문 누락. 전자결재 휴일근무(토) \"12:00~21:00\" 확인되어 출근시각 반영, 퇴근은 지문(19:41) 기준"
+    },
+    {
+      "id": "rf6106dd2f9",
+      "empId": "centerhead",
+      "date": "2026-08-10",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:55",
+      "checkout": "23:59",
+      "note": ""
+    },
+    {
+      "id": "rc902569a18",
+      "empId": "centerhead",
+      "date": "2026-08-11",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:53",
+      "checkout": "21:08",
+      "note": ""
+    },
+    {
+      "id": "r882bdfd882",
+      "empId": "centerhead",
+      "date": "2026-08-12",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:59",
+      "checkout": "23:09",
+      "note": "외출17:09~귀사21:01 있음(정상 복귀)"
+    },
+    {
+      "id": "r5fe62d9e04",
+      "empId": "centerhead",
+      "date": "2026-08-13",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:53",
+      "checkout": "22:41",
+      "note": ""
+    },
+    {
+      "id": "rc769ffcc54",
+      "empId": "centerhead",
+      "date": "2026-08-14",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "09:23",
+      "checkout": "18:21",
+      "note": "전자결재상 초과근무(9:00~21:00 등) 신청 있으나 지문기록상 18:21 퇴근 확인 - 지문 우선 반영, 신청건 확인요망. 별도 09:00~09:30 보상휴가 0.5h 신청 있음(반영 필요)"
+    },
+    {
+      "id": "r308370618b",
+      "empId": "centerhead",
+      "date": "2026-08-18",
+      "type": "leave",
+      "leaveType": "보상휴가",
+      "leaveHours": 8,
+      "note": "전자결재 보상휴가(09:00~18:00) - 지문기록 없음(휴가일)"
+    },
+    {
+      "id": "r42406132c6",
+      "empId": "centerhead",
+      "date": "2026-08-19",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "09:21",
+      "checkout": "18:23",
+      "note": "전자결재 09:00~10:00 보상휴가 1h 신청 있음(별도 반영 필요)"
+    },
+    {
+      "id": "r5057cca0f7",
+      "empId": "centerhead",
+      "date": "2026-08-20",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "09:00",
+      "checkout": "18:16",
+      "note": "확인요망: 출근 지문 누락"
+    },
+    {
+      "id": "rbfa5b9021c",
+      "empId": "centerhead",
+      "date": "2026-08-24",
+      "type": "leave",
+      "leaveType": "연차",
+      "leaveHours": 5,
+      "note": "전자결재 연차휴가(13:00~18:00) - 지문상 오전 08:48~13:17 근무 후 외출, 오후 연차 사용으로 반영"
+    },
+    {
+      "id": "r6a9747e9ca",
+      "empId": "centerhead",
+      "date": "2026-08-25",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "09:05",
+      "checkout": "23:18",
+      "note": "전자결재 09:00~09:30 연차휴가 0.5h 신청 있음(별도 반영 필요)"
+    },
+    {
+      "id": "rcc19648080",
+      "empId": "centerhead",
+      "date": "2026-08-26",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "09:10",
+      "checkout": "22:21",
+      "note": "전자결재 09:00~09:30 연차휴가 0.5h 신청 있음(별도 반영 필요)"
+    },
+    {
+      "id": "rd1f9075f19",
+      "empId": "centerhead",
+      "date": "2026-08-27",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "09:00",
+      "checkout": "18:50",
+      "note": "확인요망: 출근 지문 누락 + 전자결재상 연차휴가(09:00~18:00, 종일) 신청 있음 - 종일 연차인지 퇴근기록(18:50)이 있는 근무일인지 확인요망"
+    },
+    {
+      "id": "r26437e9276",
+      "empId": "centerhead",
+      "date": "2026-08-28",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "09:06",
+      "checkout": "18:00",
+      "note": "확인요망: 외출(11:07) 후 귀사/퇴근 기록 없음, 전자결재 신청내역도 없음 → 18:00 임시 처리"
+    },
+    {
+      "id": "r994a6928aa",
+      "empId": "centerhead",
+      "date": "2026-08-31",
+      "type": "work",
+      "mode": "auto",
+      "checkin": "08:57",
+      "checkout": "22:59",
+      "note": ""
+    }
+  ],
   "thresholds": {},
   "openings": {}
 }
