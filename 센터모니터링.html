@@ -814,6 +814,8 @@ function copyGasCode(){
 (function init(){
   if(gasUrl) document.getElementById('gas-url').value=gasUrl;
   renderDashboard();
+  // 시작 시 즉시 GAS 갱신
+  if(gasUrl) fetchFromGas();
   // 자동 새로고침 (5분마다, GAS URL 설정 시)
   setInterval(()=>{if(gasUrl) fetchFromGas();},5*60*1000);
 })();
