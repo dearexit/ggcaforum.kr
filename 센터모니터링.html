@@ -468,6 +468,11 @@ async function fetchFromGas(){
     Object.entries(json).forEach(([orgCode,entry])=>{
       if(entry.data){
         orgsData[orgCode]={data:entry.data,syncedAt:entry.syncedAt||'',source:'gas'};
+        (entry.data.resolutions||[]).forEach(r=>{
+          if((!r.attachmentFiles||!r.attachmentFiles.length)&&r.attachmentData&&r.attachmentData.length){
+            r.attachmentFiles=r.attachmentData.map(f=>({name:f.name,type:f.type,size:f.size,data:f.data}));
+          }
+        });
         count++;
       }
     });
@@ -532,17 +537,17 @@ function renderOrgGrid(){
   entries.sort((a,b)=>(a[1].data.orgName||a[0]).localeCompare(b[1].data.orgName||b[0])).forEach(([orgCode,entry])=>{
     const d=entry.data;
     const s=calcOrgStats(d);
+    const resCount=(d.resolutions||[]).length;
     let status='ok';
-    if(s.remain<0) status='over';
+    if(resCount===0) status='none';
+    else if(s.remain<0) status='over';
     else if(s.rate>=70) status='warn';
-    if(filter&&filter!==status&&!(filter==='none'&&!d.orgName)) return;
+    if(filter&&filter!==status) return;
     shown++;
 
     const barColor=s.remain<0?'#dc2626':s.rate>=70?'#d97706':'#2d6a4f';
     const badgeMap={ok:{cls:'ok',txt:'정상'},warn:{cls:'warn',txt:'주의'},over:{cls:'over',txt:'초과'},none:{cls:'none',txt:'미제출'}};
     const badge=badgeMap[status]||badgeMap['none'];
-
-    const resCount=(d.resolutions||[]).length;
     const lastSync=entry.syncedAt?fmtDateTime(entry.syncedAt):'미동기화';
 
     const div=document.createElement('div');
@@ -725,6 +730,11 @@ function processFiles(files){
     reader.onload=(ev)=>{
       try{
         const d=JSON.parse(ev.target.result);
+        (d.resolutions||[]).forEach(r=>{
+          if((!r.attachmentFiles||!r.attachmentFiles.length)&&r.attachmentData&&r.attachmentData.length){
+            r.attachmentFiles=r.attachmentData.map(f=>({name:f.name,type:f.type,size:f.size,data:f.data}));
+          }
+        });
         const orgCode=d.orgCode||(d.orgName?d.orgName.slice(0,6):'UNKNOWN');
         orgsData[orgCode]={data:d,syncedAt:d.exportedAt||new Date().toISOString(),source:'json'};
         loaded++;
