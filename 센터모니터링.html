@@ -624,6 +624,9 @@ function openDetail(orgCode){
   }).join('');
 
   document.getElementById('detail-content').innerHTML=`
+    <div style="margin-bottom:14px;display:flex;gap:10px;flex-wrap:wrap;">
+      <button onclick="downloadOrgZip('${orgCode}')" style="padding:8px 18px;background:#1b3a6b;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;">📦 ZIP 다운로드 (결의서+데이터)</button>
+    </div>
     <div class="stat-grid" style="margin-bottom:16px;">
       <div class="stat-card"><div class="label">총 교부예산</div><div class="value">${fmtAmt(s.totalBudget)} 원</div></div>
       <div class="stat-card"><div class="label">총 집행금액</div><div class="value green">${fmtAmt(s.totalSpent)} 원</div></div>
@@ -662,6 +665,74 @@ function closeDetail(){
   document.getElementById('detail-panel').style.display='none';
   document.getElementById('org-list-panel').style.display='block';
   document.getElementById('summary-stats').style.display='grid';
+}
+
+/* ════════════════════════════════
+   ZIP 다운로드
+════════════════════════════════ */
+function _monZip(entries){
+  function crc32(d){let c=-1;for(let i=0;i<d.length;i++){let b=d[i];for(let j=0;j<8;j++){if((c^b)&1){c=(c>>>1)^0xEDB88320;}else{c>>>=1;}b>>>=1;}}return(~c)>>>0;}
+  function u16(n){return[n&0xff,(n>>8)&0xff];}
+  function u32(n){return[n&0xff,(n>>8)&0xff,(n>>16)&0xff,(n>>24)&0xff];}
+  const locals=[],central=[];let offset=0;
+  for(const e of entries){
+    const nm=new TextEncoder().encode(e.name);
+    const crc=crc32(e.data),sz=e.data.length;
+    const lh=new Uint8Array([0x50,0x4B,0x03,0x04,...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0),...u32(crc),...u32(sz),...u32(sz),...u16(nm.length),...u16(0),...nm]);
+    const ch=new Uint8Array([0x50,0x4B,0x01,0x02,...u16(20),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0),...u32(crc),...u32(sz),...u32(sz),...u16(nm.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(offset),...nm]);
+    locals.push({lh,data:e.data});central.push(ch);offset+=lh.length+sz;
+  }
+  const cdSz=central.reduce((s,h)=>s+h.length,0);
+  const eocd=new Uint8Array([0x50,0x4B,0x05,0x06,...u16(0),...u16(0),...u16(entries.length),...u16(entries.length),...u32(cdSz),...u32(offset),...u16(0)]);
+  const total=offset+cdSz+eocd.length;const out=new Uint8Array(total);let pos=0;
+  for(const{lh,data}of locals){out.set(lh,pos);pos+=lh.length;out.set(data,pos);pos+=data.length;}
+  for(const h of central){out.set(h,pos);pos+=h.length;}
+  out.set(eocd,pos);return out;
+}
+
+function downloadOrgZip(orgCode){
+  const entry=orgsData[orgCode];
+  if(!entry){toast('단체 데이터를 찾을 수 없습니다.');return;}
+  const d=entry.data;
+  const enc=new TextEncoder();
+  const entries=[];
+
+  // 1. 전체 데이터 JSON
+  const jsonStr=JSON.stringify({exportedAt:new Date().toISOString(),orgCode,orgName:d.orgName||'',projName:d.projName||'',budget:d.budget||{},totalBudget:d.totalBudget||0,resolutions:d.resolutions||[]},null,2);
+  entries.push({name:`${orgCode}_데이터.json`,data:enc.encode(jsonStr)});
+
+  // 2. 결의서별 HTML
+  (d.resolutions||[]).forEach(r=>{
+    const total=(r.items||[]).reduce((s,i)=>s+(Number(i.amount)||0)+(Number(i.vat)||0),0);
+    const rows=(r.items||[]).map(i=>`<tr><td>${i.category||''}</td><td>${i.content||''}</td><td>${i.payee||''}</td><td style="text-align:right;">${Number(i.amount||0).toLocaleString()}</td><td style="text-align:right;">${Number(i.vat||0).toLocaleString()}</td></tr>`).join('');
+    const attList=(r.attachments||[]).map((a,i)=>`<li>붙임${i+1}. ${a}</li>`).join('');
+    const html=`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>지출결의서 ${r.resNo}</title>
+<style>body{font-family:'맑은 고딕',sans-serif;font-size:13px;max-width:780px;margin:20px auto;}
+h2{text-align:center;font-size:16px;border-bottom:2px solid #000;padding-bottom:8px;}
+table{width:100%;border-collapse:collapse;margin-top:12px;}
+th,td{border:1px solid #999;padding:5px 8px;}th{background:#f0f0f0;}
+.meta{margin:10px 0;font-size:12px;color:#555;}
+.total{text-align:right;font-weight:700;margin-top:8px;}
+</style></head><body>
+<h2>지출결의서</h2>
+<div class="meta"><strong>결의번호:</strong> ${r.resNo} &nbsp;|&nbsp; <strong>지출일:</strong> ${r.payDate||''} &nbsp;|&nbsp; <strong>단체:</strong> ${d.orgName||orgCode}</div>
+<table><thead><tr><th>비목</th><th>내용</th><th>지급처</th><th>금액</th><th>부가세</th></tr></thead>
+<tbody>${rows}</tbody></table>
+<div class="total">합계: ${total.toLocaleString()} 원</div>
+${attList?`<div style="margin-top:16px;"><strong>첨부파일 목록:</strong><ul>${attList}</ul></div>`:''}
+</body></html>`;
+    entries.push({name:`결의서_${r.resNo}.html`,data:enc.encode(html)});
+  });
+
+  if(!entries.length){toast('다운로드할 데이터가 없습니다.');return;}
+  const blob=new Blob([_monZip(entries)],{type:'application/zip'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const ts=new Date().toISOString().slice(0,10);
+  a.href=url;a.download=`${orgCode}_${d.orgName||''}_${ts}.zip`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),3000);
+  toast(`✅ ${orgCode} ZIP 다운로드 완료`);
 }
 
 /* ════════════════════════════════
