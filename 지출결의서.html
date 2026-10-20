@@ -1049,12 +1049,17 @@ function renderStatus(){
 /* ══════════════════════════════
    인쇄 / 출력
 ══════════════════════════════ */
-function printResolutionObj(r){
+function printResolutionObj(r, returnHtml=false){
   if(!r)return;
   const totalAmt=r.items.reduce((s,i)=>s+(Number(i.amount)||0),0);
   const totalVat=r.items.reduce((s,i)=>s+(Number(i.vat)||0),0);
   const totalSum=totalAmt+totalVat;
   const S=settings;
+  const sigDrafter=lsGet?lsGet('sig_drafter')||'':'';
+  const sigApprover=lsGet?lsGet('sig_approver')||'':'';
+  const sigSeal=lsGet?lsGet('sig_seal')||'':'';
+  const _sigImg=(b64,w=68,h=42)=>b64?`<img src="${b64}" style="max-width:${w}px;max-height:${h}px;object-fit:contain;display:block;margin:0 auto 2px;">`:'';
+
 
   /* 결재란 */
   const hasReviewer=S.reviewer?.pos||S.reviewer?.name;
@@ -1070,9 +1075,9 @@ function printResolutionObj(r){
         <td style="background:#f0f0f0;font-weight:700;">비 고</td>
       </tr>
       <tr>
-        <td style="height:52px;vertical-align:bottom;padding-bottom:4px;">${S.drafter?.pos||'담당자'}<br><strong>${S.drafter?.name||''}</strong></td>
-        <td style="height:52px;vertical-align:bottom;padding-bottom:4px;">${S.reviewer?.pos||''}<br><strong>${S.reviewer?.name||''}</strong></td>
-        <td style="height:52px;vertical-align:bottom;padding-bottom:4px;">${S.approver?.pos||'대표'}<br><strong>${S.approver?.name||''}</strong></td>
+        <td style="height:56px;vertical-align:bottom;padding-bottom:4px;">${_sigImg(sigDrafter)}${S.drafter?.pos||'담당자'}<br><strong>${S.drafter?.name||''}</strong></td>
+        <td style="height:56px;vertical-align:bottom;padding-bottom:4px;">${S.reviewer?.pos||''}<br><strong>${S.reviewer?.name||''}</strong></td>
+        <td style="height:56px;vertical-align:bottom;padding-bottom:4px;">${_sigImg(sigApprover)}${S.approver?.pos||'대표'}<br><strong>${S.approver?.name||''}</strong></td>
         <td></td>
       </tr>
     </table>`;
@@ -1086,8 +1091,8 @@ function printResolutionObj(r){
         <td style="background:#f0f0f0;font-weight:700;">비 고</td>
       </tr>
       <tr>
-        <td style="height:52px;vertical-align:bottom;padding-bottom:4px;">${S.drafter?.pos||'담당자'}<br><strong>${S.drafter?.name||''}</strong></td>
-        <td style="height:52px;vertical-align:bottom;padding-bottom:4px;">${S.approver?.pos||'대표'}<br><strong>${S.approver?.name||''}</strong></td>
+        <td style="height:56px;vertical-align:bottom;padding-bottom:4px;">${_sigImg(sigDrafter)}${S.drafter?.pos||'담당자'}<br><strong>${S.drafter?.name||''}</strong></td>
+        <td style="height:56px;vertical-align:bottom;padding-bottom:4px;">${_sigImg(sigApprover)}${S.approver?.pos||'대표'}<br><strong>${S.approver?.name||''}</strong></td>
         <td></td>
       </tr>
     </table>`;
@@ -1217,7 +1222,7 @@ function printResolutionObj(r){
     <div class="sign-area">
       위와 같이 지출 결의하오니 결재하여 주시기 바랍니다.<br>
       <div style="margin-top:6px;">${todayStr}</div>
-      <div class="sign-line">${S.orgName||'(단체명)'}  (인)</div>
+      <div class="sign-line" style="display:inline-block;position:relative;">${S.orgName||'(단체명)'} ${S.approver?.pos||'대표'} ${S.repName||''} &nbsp;<span style="position:relative;display:inline-block;">(인)${sigSeal?`<img src="${sigSeal}" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);max-height:54px;max-width:54px;object-fit:contain;opacity:0.85;mix-blend-mode:multiply;">`:''}</span></div>
     </div>
 
     <div style="margin-top:16px;padding:8px 10px;background:#f9f9f9;border:1px dashed #bbb;font-size:8.5pt;color:#555;line-height:1.8;">
@@ -1229,8 +1234,7 @@ function printResolutionObj(r){
     </div>
   </div>`;
 
-  const win=window.open('','_blank','width=900,height=1100');
-  win.document.write(`<!DOCTYPE html><html lang="ko"><head>
+  const _fullHtml=`<!DOCTYPE html><html lang="ko"><head>
     <meta charset="UTF-8">
     <title>지출결의서 ${r.resNo}</title>
     <style>
@@ -1263,7 +1267,11 @@ function printResolutionObj(r){
       <button onclick="window.close()" style="margin-left:8px;padding:8px 18px;background:#6b7280;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;">닫기</button>
     </div>
     ${html}
-  </body></html>`);
+  </body></html>`;
+  if(returnHtml) return _fullHtml;
+  const win=window.open('','_blank','width=900,height=1100');
+  if(!win){alert('팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해 주세요.');return;}
+  win.document.write(_fullHtml);
   win.document.close();
   setTimeout(()=>win.focus(),300);
 }
