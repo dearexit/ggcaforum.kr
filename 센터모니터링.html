@@ -885,17 +885,67 @@ function printResDetail(orgCode, resNo){
   win.document.close();
 }
 
-/* 개별 결의서 ZIP 다운로드 (HTML + 첨부파일) */
+/* 스크립트 동적 로드 */
+function _loadScript(src){
+  return new Promise((res,rej)=>{
+    if(document.querySelector(`script[src="${src}"]`)){res();return;}
+    const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);
+  });
+}
+
+/* HTML → PDF Uint8Array 변환 (jsPDF + html2canvas) */
+async function _htmlToPdfU8(htmlStr){
+  await _loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+  await _loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+  const el=document.createElement('div');
+  el.style.cssText='position:fixed;left:-9999px;top:0;width:794px;background:#fff;font-family:맑은 고딕,Malgun Gothic,Apple SD Gothic Neo,sans-serif;';
+  const styleBlocks=[...htmlStr.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)].map(m=>m[0]).join('\n');
+  const bodyMatch=htmlStr.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  el.innerHTML=styleBlocks+(bodyMatch?bodyMatch[1]:'');
+  const npEl=el.querySelector('.no-print');if(npEl)npEl.style.display='none';
+  document.body.appendChild(el);
+  try{
+    const {jsPDF}=window.jspdf;
+    const A4W=210,A4H=297,SCALE=2;
+    const fullCanvas=await html2canvas(el,{scale:SCALE,useCORS:true,logging:false,backgroundColor:'#ffffff',width:794,windowWidth:794});
+    const mmPerPx=A4W/(794*SCALE);
+    const pageH_px=Math.floor(A4H/mmPerPx);
+    const pdf=new jsPDF({orientation:'p',unit:'mm',format:'a4'});
+    const cw=fullCanvas.width,ch=fullCanvas.height;
+    let srcY=0,page=0;
+    while(srcY<ch){
+      if(page>0)pdf.addPage();
+      const sliceH=Math.min(pageH_px,ch-srcY);
+      const tmp=document.createElement('canvas');
+      tmp.width=cw;tmp.height=sliceH;
+      tmp.getContext('2d').drawImage(fullCanvas,0,srcY,cw,sliceH,0,0,cw,sliceH);
+      pdf.addImage(tmp.toDataURL('image/jpeg',0.88),'JPEG',0,0,A4W,sliceH*mmPerPx);
+      srcY+=pageH_px;page++;
+    }
+    return new Uint8Array(pdf.output('arraybuffer'));
+  }finally{document.body.removeChild(el);}
+}
+
+/* 개별 결의서 ZIP 다운로드 (PDF + 첨부파일) */
 async function downloadResZip(orgCode, resNo){
   const entry=orgsData[orgCode];
   if(!entry){toast('데이터를 찾을 수 없습니다.');return;}
   const d=entry.data;
   const r=(d.resolutions||[]).find(x=>x.resNo===resNo);
   if(!r){toast('결의서를 찾을 수 없습니다.');return;}
-  toast(`📦 ${resNo} ZIP 생성 중...`,4000);
-  const enc=new TextEncoder();
+  toast(`📄 PDF 생성 중... 잠시 기다려 주세요.`,8000);
+  const rawHtml=_buildResHtml(r,d,orgCode);
   const entries=[];
-  entries.push({name:`지출결의서_${resNo}.html`,data:enc.encode(_buildResHtml(r,d,orgCode))});
+  // PDF 변환 시도, 실패 시 자동인쇄 HTML로 대체
+  try{
+    const pdfBytes=await _htmlToPdfU8(rawHtml);
+    entries.push({name:`지출결의서_${resNo}.pdf`,data:pdfBytes});
+  }catch(e){
+    console.warn('PDF 변환 실패, HTML로 대체:',e);
+    const autoHtml=rawHtml.replace('</head>','<script>window.onload=function(){setTimeout(function(){window.print();},600);}<\/script></head>');
+    entries.push({name:`지출결의서_${resNo}.html`,data:new TextEncoder().encode(autoHtml)});
+  }
+  // 첨부파일 (IndexedDB에서)
   const attFiles=await MonitorAttachDB.get(`${orgCode}__${resNo}`);
   attFiles.forEach((f,i)=>{
     if(f.data){
