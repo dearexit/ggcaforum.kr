@@ -93,8 +93,8 @@ input,select,textarea,button{font-family:inherit;}
 /* ── 상세 패널 ── */
 #detail-panel{display:none;}
 .detail-back{display:flex;align-items:center;gap:10px;margin-bottom:18px;}
-.detail-back button{background:none;border:1.5px solid #d1d5db;border-radius:7px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:600;color:#374151;}
-.detail-back button:hover{border-color:#7c3aed;color:#7c3aed;}
+.detail-back button{background:#1b3a6b;border:none;border-radius:7px;padding:7px 16px;cursor:pointer;font-size:13px;font-weight:600;color:#fff;}
+.detail-back button:hover{background:#2d4d7e;}
 .detail-title{font-size:18px;font-weight:700;color:#1b3a6b;}
 
 /* ── 진행바 ── */
@@ -539,8 +539,8 @@ function renderOrgGrid(){
     shown++;
 
     const barColor=s.remain<0?'#dc2626':s.rate>=70?'#d97706':'#2d6a4f';
-    const badgeMap={ok:{cls:'ok',txt:'정상'},warn:{cls:'warn',txt:'주의'},over:{cls:'over',txt:'초과'},none:{cls:'none',txt:'미제출'}};
-    const badge=badgeMap[status]||badgeMap['none'];
+    const badgeCls=s.remain<0?'over':s.rate>=70?'warn':'ok';
+    const badge={cls:badgeCls,txt:`집행율:${s.rate}%`};
 
     const resCount=(d.resolutions||[]).length;
     const lastSync=entry.syncedAt?fmtDateTime(entry.syncedAt):'미동기화';
