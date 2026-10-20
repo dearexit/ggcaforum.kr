@@ -636,12 +636,17 @@ function openDetail(orgCode){
   const resRows=[...(d.resolutions||[])].reverse().map(r=>{
     const total=(r.items||[]).reduce((s,i)=>s+(Number(i.amount)||0)+(Number(i.vat)||0),0);
     const cats=[...new Set((r.items||[]).map(i=>i.category))].join(', ');
+    const attCount=(r.attachmentFiles||r.attachments||[]).length;
     return `<tr>
       <td><strong>${r.resNo}</strong></td>
       <td>${fmtDate(r.payDate)}</td>
       <td class="left">${cats}</td>
       <td>${(r.items||[]).length}건</td>
       <td class="amt"><strong>${fmtAmt(total)}</strong></td>
+      <td style="white-space:nowrap;">
+        <button onclick="event.stopPropagation();printResDetail('${orgCode}','${r.resNo}')" style="padding:3px 10px;background:#475569;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer;margin-right:4px;">🖨️ 출력</button>
+        <button onclick="event.stopPropagation();downloadResZip('${orgCode}','${r.resNo}')" style="padding:3px 10px;background:#1b3a6b;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer;">📦 ZIP${attCount?` (첨부${attCount})`:''}</button>
+      </td>
     </tr>`;
   }).join('');
 
@@ -671,8 +676,8 @@ function openDetail(orgCode){
       <div class="card-body">
         <div style="overflow-x:auto;">
           <table class="data-table">
-            <thead><tr><th>결의번호</th><th>지출일자</th><th>비목</th><th>항목수</th><th>합계금액</th></tr></thead>
-            <tbody>${resRows||'<tr><td colspan="5" style="color:#9ca3af;padding:20px;">결의서 없음</td></tr>'}</tbody>
+            <thead><tr><th>결의번호</th><th>지출일자</th><th>비목</th><th>항목수</th><th>합계금액</th><th>작업</th></tr></thead>
+            <tbody>${resRows||'<tr><td colspan="6" style="color:#9ca3af;padding:20px;">결의서 없음</td></tr>'}</tbody>
           </table>
         </div>
       </div>
@@ -713,6 +718,108 @@ function _monZip(entries){
 }
 
 function _b64u8(b64){const s=b64.includes(',')?b64.split(',')[1]:b64;const bin=atob(s);const a=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);return a;}
+
+/* 결의서 HTML 생성 (출력/ZIP 공용) */
+function _buildResHtml(r, d, orgCode){
+  const total=(r.items||[]).reduce((s,i)=>s+(Number(i.amount)||0)+(Number(i.vat)||0),0);
+  const rows=(r.items||[]).map(i=>`<tr>
+    <td>${i.category||''}</td><td>${i.content||''}</td><td>${i.payee||''}</td>
+    <td style="text-align:right;">${Number(i.amount||0).toLocaleString()}</td>
+    <td style="text-align:right;">${Number(i.vat||0).toLocaleString()}</td>
+    <td style="text-align:right;">${(Number(i.amount||0)+Number(i.vat||0)).toLocaleString()}</td>
+  </tr>`).join('');
+  const attMeta=r.attachmentFiles||[];
+  const attLegacy=r.attachments||[];
+  const attNames=attMeta.length?attMeta.map(f=>f.name):attLegacy;
+  const attListHtml=attNames.length?`<div style="margin-top:18px;font-size:12px;"><strong>붙임파일 목록</strong><ul style="margin:6px 0 0 18px;padding:0;">${attNames.map((n,i)=>`<li>붙임${i+1}. ${n}</li>`).join('')}</ul></div>`:'';
+  return`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<title>지출결의서 ${r.resNo}</title>
+<style>
+@media print{body{margin:0;}button{display:none!important;}}
+body{font-family:'맑은 고딕',Arial,sans-serif;font-size:13px;max-width:820px;margin:20px auto;padding:0 20px;}
+h2{text-align:center;font-size:18px;letter-spacing:4px;border-bottom:3px double #1b3a6b;padding-bottom:10px;color:#1b3a6b;margin-bottom:20px;}
+.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin:14px 0;font-size:12px;border:1px solid #ccc;padding:12px 16px;border-radius:5px;background:#f8fafc;}
+.meta-grid span{color:#666;}.meta-grid strong{color:#111;}
+table{width:100%;border-collapse:collapse;margin-top:16px;}
+th{background:#1b3a6b;color:#fff;padding:7px 8px;font-size:12px;text-align:center;border:1px solid #1b3a6b;}
+td{border:1px solid #bbb;padding:6px 8px;font-size:12px;}
+.total-row td{background:#eef2ff;font-weight:700;}
+.sign-area{margin-top:30px;display:flex;justify-content:flex-end;gap:0;}
+.sign-box{width:80px;text-align:center;border:1px solid #555;padding:6px 4px;font-size:11px;}
+.sign-box .label{color:#666;margin-bottom:28px;}
+.sign-box .name{border-top:1px solid #ccc;padding-top:4px;font-size:10px;}
+.print-btn{display:block;margin:20px auto 0;padding:8px 28px;background:#1b3a6b;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;}
+.footer{margin-top:20px;font-size:10px;color:#aaa;text-align:right;}
+</style></head><body>
+<h2>지　출　결　의　서</h2>
+<div class="meta-grid">
+  <div><span>결 의 번 호: </span><strong>${r.resNo}</strong></div>
+  <div><span>지 출 일 자: </span><strong>${r.payDate||'—'}</strong></div>
+  <div><span>단&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;체: </span><strong>${d.orgName||orgCode}</strong></div>
+  <div><span>사 &nbsp;업 &nbsp;명: </span><strong>${d.projName||'—'}</strong></div>
+  ${r.planDate?`<div><span>지 출 계 획: </span><strong>${r.planDate}</strong></div>`:'<div></div>'}
+  <div><span>교 부 기 관: </span><strong>${d.agency||'—'}</strong></div>
+</div>
+<table>
+  <thead><tr><th>비목</th><th>내용</th><th>지급처</th><th>금액(원)</th><th>부가세(원)</th><th>합계(원)</th></tr></thead>
+  <tbody>${rows}</tbody>
+  <tr class="total-row">
+    <td colspan="3" style="text-align:right;padding-right:12px;">합&nbsp;&nbsp;&nbsp;&nbsp;계</td>
+    <td style="text-align:right;">${(r.items||[]).reduce((s,i)=>s+Number(i.amount||0),0).toLocaleString()}</td>
+    <td style="text-align:right;">${(r.items||[]).reduce((s,i)=>s+Number(i.vat||0),0).toLocaleString()}</td>
+    <td style="text-align:right;">${total.toLocaleString()}</td>
+  </tr>
+</table>
+${attListHtml}
+<div class="sign-area">
+  <div class="sign-box"><div class="label">기안</div><div class="name">&nbsp;</div></div>
+  <div class="sign-box"><div class="label">검토</div><div class="name">&nbsp;</div></div>
+  <div class="sign-box"><div class="label">결재</div><div class="name">&nbsp;</div></div>
+</div>
+<button class="print-btn" onclick="window.print()">🖨️ 인쇄 / PDF 저장</button>
+<div class="footer">출력일: ${new Date().toLocaleDateString('ko-KR')} · 센터모니터링</div>
+</body></html>`;
+}
+
+/* 개별 결의서 출력 (새 창) */
+function printResDetail(orgCode, resNo){
+  const entry=orgsData[orgCode];
+  if(!entry){toast('데이터를 찾을 수 없습니다.');return;}
+  const d=entry.data;
+  const r=(d.resolutions||[]).find(x=>x.resNo===resNo);
+  if(!r){toast('결의서를 찾을 수 없습니다.');return;}
+  const html=_buildResHtml(r,d,orgCode);
+  const win=window.open('','_blank','width=900,height=1100');
+  win.document.write(html);
+  win.document.close();
+}
+
+/* 개별 결의서 ZIP 다운로드 (HTML + 첨부파일) */
+async function downloadResZip(orgCode, resNo){
+  const entry=orgsData[orgCode];
+  if(!entry){toast('데이터를 찾을 수 없습니다.');return;}
+  const d=entry.data;
+  const r=(d.resolutions||[]).find(x=>x.resNo===resNo);
+  if(!r){toast('결의서를 찾을 수 없습니다.');return;}
+  toast(`📦 ${resNo} ZIP 생성 중...`,4000);
+  const enc=new TextEncoder();
+  const entries=[];
+  entries.push({name:`지출결의서_${resNo}.html`,data:enc.encode(_buildResHtml(r,d,orgCode))});
+  const attFiles=await MonitorAttachDB.get(`${orgCode}__${resNo}`);
+  attFiles.forEach((f,i)=>{
+    if(f.data){
+      try{entries.push({name:`붙임${i+1}_${f.name}`,data:_b64u8(f.data)});}
+      catch(e){console.warn('첨부파일 오류:',f.name,e);}
+    }
+  });
+  const blob=new Blob([_monZip(entries)],{type:'application/zip'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`${resNo}.zip`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
+  toast(`✅ ${resNo} ZIP 다운로드 완료${attFiles.length?` (첨부파일 ${attFiles.length}개 포함)`:' (첨부파일 없음)'}`);
+}
 
 async function downloadOrgZip(orgCode){
   const entry=orgsData[orgCode];
