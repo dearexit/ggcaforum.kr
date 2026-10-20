@@ -479,6 +479,24 @@ function saveGasUrl(){
   else toast('❌ URL이 비어있습니다.');
 }
 
+/* 첨부파일 바이너리 → IndexedDB 저장 공통 함수 */
+async function _storeAttachFiles(orgCode, resolutions){
+  let total=0;
+  const saves=[];
+  (resolutions||[]).forEach(r=>{
+    const attFiles=r.attachmentFiles||[];
+    const withData=attFiles.filter(f=>f.data);
+    if(withData.length){
+      total+=withData.length;
+      saves.push(MonitorAttachDB.set(`${orgCode}__${r.resNo}`,withData));
+      // orgsData에는 메타만 보관 (binary 제거)
+      r.attachmentFiles=attFiles.map(f=>({name:f.name,type:f.type,size:f.size}));
+    }
+  });
+  if(saves.length) await Promise.all(saves);
+  return total;
+}
+
 async function fetchFromGas(){
   if(!gasUrl){toast('Apps Script URL이 설정되지 않았습니다.');return;}
   const status=document.getElementById('url-status');
@@ -487,18 +505,21 @@ async function fetchFromGas(){
   try{
     const resp=await fetch(gasUrl,{method:'GET',mode:'cors'});
     const json=await resp.json();
-    let count=0;
-    Object.entries(json).forEach(([orgCode,entry])=>{
+    let count=0,totalAttach=0;
+    for(const [orgCode,entry] of Object.entries(json)){
       if(entry.data){
+        // GAS 응답에 첨부파일 바이너리가 있으면 IndexedDB에 저장
+        const n=await _storeAttachFiles(orgCode, entry.data.resolutions||[]);
+        totalAttach+=n;
         orgsData[orgCode]={data:entry.data,syncedAt:entry.syncedAt||'',source:'gas'};
         count++;
       }
-    });
+    }
     saveLocal();
-    status.innerHTML=`<span style="color:#2d6a4f;">✅ ${count}개 단체 데이터 불러오기 완료</span>`;
+    status.innerHTML=`<span style="color:#2d6a4f;">✅ ${count}개 단체 데이터 불러오기 완료${totalAttach?` (첨부파일 ${totalAttach}개)`:''}</span>`;
     renderDashboard();
     document.getElementById('last-refresh').textContent='최근 갱신: '+fmtDateTime(new Date().toISOString());
-    toast(`✅ ${count}개 단체 데이터 갱신 완료`);
+    toast(`✅ ${count}개 단체 데이터 갱신 완료${totalAttach?` · 첨부파일 ${totalAttach}개`:''}`);
   }catch(e){
     status.innerHTML=`<span style="color:#dc2626;">❌ 불러오기 실패: ${e.message} (CORS 오류 시 JSON 방식 사용)</span>`;
     toast('❌ 데이터 불러오기 실패');
