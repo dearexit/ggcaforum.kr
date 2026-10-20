@@ -968,19 +968,31 @@ async function downloadResZip(orgCode, resNo){
   }
   // 첨부파일 (IndexedDB에서)
   const attFiles=await MonitorAttachDB.get(`${orgCode}__${resNo}`);
+  console.log(`[ZIP] ${orgCode}__${resNo} IndexedDB 첨부파일:`, attFiles.length, attFiles.map(f=>f.name));
+  let addedAtt=0;
   attFiles.forEach((f,i)=>{
     if(f.data){
-      try{entries.push({name:`붙임${i+1}_${f.name}`,data:_b64u8(f.data)});}
-      catch(e){console.warn('첨부파일 오류:',f.name,e);}
+      try{entries.push({name:`붙임${i+1}_${f.name}`,data:_b64u8(f.data)});addedAtt++;}
+      catch(e){console.warn('첨부파일 변환 오류:',f.name,e);}
+    }else{
+      console.warn(`[ZIP] 첨부파일 '${f.name}'에 data 없음 (메타만 있음)`);
     }
   });
+  // orgsData 메타 기준 예상 파일 수 (ZIP에 넣지 못한 것 경고)
+  const metaFiles=(r.attachmentFiles||[]);
   const blob=new Blob([_monZip(entries)],{type:'application/zip'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   a.href=url;a.download=`${resNo}.zip`;
   document.body.appendChild(a);a.click();document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(url),5000);
-  toast(`✅ ${resNo} ZIP 다운로드 완료${attFiles.length?` (첨부파일 ${attFiles.length}개 포함)`:' (첨부파일 없음)'}`);
+  if(addedAtt>0){
+    toast(`✅ ${resNo} ZIP 다운로드 완료 (첨부파일 ${addedAtt}개 포함)`,5000);
+  }else if(metaFiles.length>0){
+    toast(`⚠️ ${resNo} ZIP 다운로드됨 — 첨부파일 ${metaFiles.length}개가 누락됨.\nJSON 재임포트 또는 GAS 재동기화 필요.`,8000);
+  }else{
+    toast(`✅ ${resNo} ZIP 다운로드 완료 (첨부파일 없음)`,4000);
+  }
 }
 
 async function downloadOrgZip(orgCode){
@@ -1148,13 +1160,28 @@ function processFiles(files){
             r.attachmentFiles=attFiles.map(f=>({name:f.name,type:f.type,size:f.size}));
           }
         });
+        // 첨부파일 메타만 있고 binary 없는 항목 카운트
+        let metaOnlyCount=0;
+        (d.resolutions||[]).forEach(r=>{
+          const all=r.attachmentFiles||[];
+          const metaOnly=all.filter(f=>!f.data&&f.name);
+          metaOnlyCount+=metaOnly.length;
+        });
         orgsData[orgCode]={data:d,syncedAt:d.exportedAt||new Date().toISOString(),source:'json'};
         Promise.all(attSaves).then(()=>{
           loaded++;
-          const attMsg=totalAttach?` · 첨부파일 ${totalAttach}개`:'';
+          let attMsg='';
+          if(totalAttach>0) attMsg=`<span style="color:#166534;font-weight:700;"> · ✅ 첨부파일 ${totalAttach}개 저장됨</span>`;
+          else if(metaOnlyCount>0) attMsg=`<span style="color:#dc2626;font-weight:700;"> · ⚠️ 첨부파일 ${metaOnlyCount}개 메타만 있음 (바이너리 없음 → ZIP에 미포함)</span>`;
+          else attMsg=`<span style="color:#6b7280;"> · 첨부파일 없음</span>`;
           log.innerHTML+=`<div style="padding:6px 10px;background:#f0fdf4;border-left:3px solid #2d6a4f;border-radius:4px;margin-bottom:6px;font-size:13px;">
             ✅ <strong>${file.name}</strong> → 단체코드: <code>${orgCode}</code> (${d.orgName||''}) · 결의서 ${(d.resolutions||[]).length}건${attMsg}
           </div>`;
+          if(metaOnlyCount>0&&totalAttach===0){
+            log.innerHTML+=`<div style="padding:6px 10px;background:#fff7ed;border-left:3px solid #f59e0b;border-radius:4px;margin-bottom:6px;font-size:12px;color:#92400e;">
+              💡 <strong>첨부파일을 ZIP에 포함하려면</strong>: 단체 앱에서 <strong>💾 데이터 백업</strong>을 다시 눌러 JSON을 새로 받아 주세요. (GAS 자동동기화만 사용하는 경우 GAS에 바이너리가 없을 수 있습니다)
+            </div>`;
+          }
           if(loaded===jsonFiles.length){
             saveLocal();
             renderImportedList();
