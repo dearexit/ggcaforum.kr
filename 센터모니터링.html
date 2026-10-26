@@ -181,7 +181,7 @@ pre{background:#1e293b;color:#e2e8f0;border-radius:8px;padding:16px;font-size:12
         <select id="filter-status" onchange="renderOrgGrid()" style="padding:7px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
           <option value="">전체 단체</option>
           <option value="over">예산초과</option>
-          <option value="warn">주의(70%↑)</option>
+          <option value="warn">80%이상 집행</option>
           <option value="ok">정상</option>
           <option value="none">미제출</option>
         </select>
@@ -554,7 +554,7 @@ function renderSummaryStats(){
     total.spent+=s.totalSpent;
     total.remain+=s.remain;
     if(s.remain<0) overCount++;
-    else if(s.rate>=70) warnCount++;
+    else if(s.rate>=80) warnCount++;
   });
   const totalRate=total.budget>0?Math.round(total.spent/total.budget*100):0;
   document.getElementById('summary-stats').innerHTML=`
@@ -564,7 +564,7 @@ function renderSummaryStats(){
     <div class="stat-card"><div class="label">전체 잔액 합계</div><div class="value ${total.remain<0?'red':'orange'}">${fmtAmt(total.remain)} 원</div></div>
     <div class="stat-card"><div class="label">전체 집행률</div><div class="value ${totalRate>=90?'red':totalRate>=70?'orange':'green'}">${totalRate}%</div></div>
     <div class="stat-card"><div class="label">예산초과 단체</div><div class="value ${overCount>0?'red':'green'}">${overCount}개</div></div>
-    <div class="stat-card"><div class="label">주의 단체(70%↑)</div><div class="value ${warnCount>0?'orange':'green'}">${warnCount}개</div></div>`;
+    <div class="stat-card"><div class="label">80% 이상 집행 단체</div><div class="value ${warnCount>0?'orange':'green'}">${warnCount}개</div></div>`;
 }
 
 function renderOrgGrid(){

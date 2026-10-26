@@ -186,6 +186,7 @@ input,select,textarea,button{font-family:inherit;}
   <button class="tab-btn" onclick="switchTab('tab-entry',this)">✏️ 지출내역 입력</button>
   <button class="tab-btn" onclick="switchTab('tab-resolutions',this)">📄 지출결의서 목록</button>
   <button class="tab-btn" onclick="switchTab('tab-status',this)">📊 집행현황</button>
+  <button class="tab-btn" id="faq-tab-btn" onclick="switchTab('tab-faq',this)">📮 FAQ 및 문의</button>
 </div>
 
 <!-- ════════════ ① 기본정보 설정 ════════════ -->
@@ -222,6 +223,10 @@ input,select,textarea,button{font-family:inherit;}
         <div class="form-group">
           <label>연락처</label>
           <input type="text" id="s-phone" placeholder="예) 010-0000-0000">
+        </div>
+        <div class="form-group">
+          <label>단체 이메일 <span style="color:#9ca3af;font-weight:400;">(센터 답변 수신용)</span></label>
+          <input type="email" id="s-email" placeholder="예) contact@org.kr">
         </div>
         <div class="form-group">
           <label>총 교부예산 (원)</label>
@@ -492,6 +497,56 @@ input,select,textarea,button{font-family:inherit;}
   </div>
 </div>
 
+<!-- ════════════ ⑤ FAQ 및 문의 ════════════ -->
+<div id="tab-faq" class="tab-panel">
+
+  <div class="card" style="background:linear-gradient(135deg,#1b3a6b 0%,#2563eb 100%);color:#fff;margin-bottom:16px;">
+    <div class="card-body" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:20px 24px;">
+      <div>
+        <div style="font-size:17px;font-weight:700;margin-bottom:4px;">📮 센터에 문의하기</div>
+        <div style="font-size:13px;opacity:0.85;">보조금 집행 관련 궁금한 사항을 담당자에게 직접 문의하세요.</div>
+      </div>
+      <button onclick="openInquiryModal()" style="background:#fff;color:#1b3a6b;border:none;border-radius:8px;padding:11px 22px;font-weight:700;cursor:pointer;font-size:14px;white-space:nowrap;">✉️ 문의 보내기</button>
+    </div>
+  </div>
+
+  <div class="card" id="inquiry-history-card" style="display:none;">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>📋 문의 기록</span>
+      <button onclick="clearInquiries()" style="font-size:11px;padding:3px 10px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:4px;cursor:pointer;">전체 삭제</button>
+    </div>
+    <div class="card-body" id="inquiry-history-body"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">❓ 자주 묻는 질문 (FAQ)</div>
+    <div class="card-body" style="padding:0;">
+      <div id="faq-list"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 문의 모달 -->
+<div id="inquiry-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target===this)closeInquiryModal()">
+  <div style="background:#fff;border-radius:12px;width:min(500px,94vw);padding:28px;box-shadow:0 8px 32px rgba(0,0,0,.18);" onclick="event.stopPropagation()">
+    <div style="font-size:17px;font-weight:700;color:#1b3a6b;margin-bottom:20px;">✉️ 센터에 문의하기</div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">제목 <span style="color:#dc2626;">*</span></label>
+      <input id="inq-subject" type="text" placeholder="문의 제목을 입력하세요" style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;box-sizing:border-box;">
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">문의 내용 <span style="color:#dc2626;">*</span></label>
+      <textarea id="inq-body" rows="6" placeholder="문의하실 내용을 자세히 입력해 주세요." style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;box-sizing:border-box;resize:vertical;"></textarea>
+    </div>
+    <div id="inq-email-note" style="font-size:12px;color:#6b7280;margin-bottom:16px;padding:8px 12px;background:#f9fafb;border-radius:6px;"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button onclick="closeInquiryModal()" style="padding:9px 20px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:6px;font-size:14px;cursor:pointer;">취소</button>
+      <button onclick="sendInquiry()" style="padding:9px 20px;background:#1b3a6b;color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;">✉️ 메일 보내기</button>
+    </div>
+  </div>
+</div>
+
 <!-- ════════════════════════════════════
   JavaScript
 ════════════════════════════════════ -->
@@ -614,6 +669,7 @@ function switchTab(id, btn){
   if(id==='tab-resolutions') renderResolutionList();
   if(id==='tab-status') renderStatus();
   if(id==='tab-settings') renderSettings();
+  if(id==='tab-faq'){renderFaq();renderInquiryHistory();}
 }
 
 /* ══════════════════════════════
@@ -627,6 +683,7 @@ function renderSettings(){
   document.getElementById('s-agency').value=settings.agency||'';
   document.getElementById('s-manager').value=settings.manager||'';
   document.getElementById('s-phone').value=settings.phone||'';
+  document.getElementById('s-email').value=settings.email||'';
   document.getElementById('s-totalBudget').value=settings.totalBudget||'';
   document.getElementById('s-centerUrl').value=settings.centerUrl||'';
   document.getElementById('s-drafter-pos').value=settings.drafter?.pos||'담당자';
@@ -700,6 +757,7 @@ function saveSettings(){
   settings.agency=document.getElementById('s-agency').value.trim();
   settings.manager=document.getElementById('s-manager').value.trim();
   settings.phone=document.getElementById('s-phone').value.trim();
+  settings.email=document.getElementById('s-email').value.trim();
   settings.totalBudget=Number(document.getElementById('s-totalBudget').value)||0;
   settings.centerUrl=document.getElementById('s-centerUrl').value.trim();
   settings.drafter={pos:document.getElementById('s-drafter-pos').value.trim(),name:document.getElementById('s-drafter-name').value.trim()};
@@ -1286,6 +1344,7 @@ function printResolutionObj(r, returnHtml=false){
   const today=new Date().toISOString().split('T')[0];
   document.getElementById('e-planDate').value=today;
   document.getElementById('e-payDate').value=today;
+  updateFaqBadge();
 })();
 
 /* ══════════════════════════════
@@ -1370,6 +1429,130 @@ async function downloadResWithAttachments(resNo){
   document.body.appendChild(a);a.click();document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(url),3000);
   toast(`✅ ${resNo}.zip 다운로드 완료`);
+}
+
+/* ══════════════════════════════
+   FAQ 및 문의 탭
+══════════════════════════════ */
+const FAQ_DATA=[
+  {q:'지출결의서는 어떻게 작성하나요?',
+   a:'✏️ 지출내역 입력 탭에서 비목·지출내용·지급처·금액을 입력하고 증빙서류를 첨부한 뒤 <strong>결의서 저장</strong>을 누르세요. 저장된 결의서는 📄 지출결의서 목록 탭에서 확인·출력·ZIP 다운로드할 수 있습니다.'},
+  {q:'지출 증빙서류는 어떤 것이 필요한가요?',
+   a:'비목별로 필요한 서류가 다릅니다.<br>• <strong>강사비</strong>: 강의확인서, 강사이력서, 이체확인증<br>• <strong>물품구입비</strong>: 영수증(카드매출전표), 비교견적서, 물품사진<br>• <strong>식비/다과비</strong>: 영수증, 참석자명단<br>• 기타 비목은 지출내역 입력 시 자동으로 필요 서류가 안내됩니다.'},
+  {q:'예산 비목 간 전용(유용)이 가능한가요?',
+   a:'원칙적으로 승인된 예산 비목 내에서만 집행해야 합니다. 부득이하게 비목 간 전용이 필요한 경우 사전에 센터 담당자와 협의하고 승인을 받은 후 집행하세요. 무단 전용은 정산 시 반납 처리될 수 있습니다.'},
+  {q:'지출 가능한 항목과 불가 항목은 무엇인가요?',
+   a:'<strong>✅ 지출 가능</strong>: 사업 목적에 직접 관련된 강사비·인건비·물품구입비·임차비·홍보비 등<br><strong>❌ 지출 불가</strong>: 개인 소비(술값, 담배), 사업 목적 외 물품, 대표자 개인 경비, 중복 증빙 항목, 현금 지급(계좌이체 권장)'},
+  {q:'보조금 집행 기간과 정산 기한은 언제인가요?',
+   a:'사업 협약서에 명시된 기간 내에만 집행 가능합니다. 협약 기간 이후 지출은 인정되지 않습니다. 정산 기한은 사업 종료 후 <strong>14일 이내</strong>가 일반적이나, 협약서를 반드시 확인하세요. 기한 내 미제출 시 불이익이 발생할 수 있습니다.'},
+  {q:'GAS 자동동기화 설정은 어떻게 하나요?',
+   a:'⚙️ 기본정보 설정 탭 → <strong>센터 연동 URL</strong> 항목에 센터 담당자가 제공한 Google Apps Script URL을 입력하고 저장하세요. 이후 결의서 저장 시 자동으로 센터에 전송됩니다. URL이 없으면 <strong>💾 데이터 백업하기</strong>로 JSON 파일을 내려받아 센터에 제출하세요.'},
+  {q:'첨부파일이 ZIP에 포함되지 않는다면?',
+   a:'센터모니터링에서 첨부파일을 보려면 <strong>💾 데이터 백업하기</strong>로 생성한 JSON 파일을 센터에 제출해야 합니다. GAS 자동동기화만 사용하는 경우 이미지 바이너리가 포함되지 않을 수 있어, 중요한 첨부파일은 반드시 JSON 백업으로 전달해 주세요.'},
+  {q:'영수증은 어떻게 첨부하나요?',
+   a:'✏️ 지출내역 입력 탭에서 지출 항목을 추가한 후 <strong>📎 첨부파일 추가</strong> 버튼을 눌러 카드영수증·사진 등 파일을 업로드하세요. 지원 형식: JPG, PNG, PDF, GIF 등. 첨부파일은 결의서 저장 시 함께 보관되며 ZIP 다운로드 시 포함됩니다.'}
+];
+
+function renderFaq(){
+  const el=document.getElementById('faq-list');
+  el.innerHTML=FAQ_DATA.map((item,i)=>`
+    <div style="border-bottom:1px solid #f3f4f6;">
+      <button onclick="toggleFaq(${i})" style="width:100%;text-align:left;padding:16px 20px;background:none;border:none;cursor:pointer;font-size:14px;font-weight:600;color:#1b3a6b;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <span>Q. ${item.q}</span>
+        <span id="faq-arrow-${i}" style="font-size:18px;flex-shrink:0;transition:transform 0.2s;">▼</span>
+      </button>
+      <div id="faq-body-${i}" style="display:none;padding:0 20px 16px;font-size:13.5px;color:#374151;line-height:1.8;background:#f9fafb;border-top:1px solid #f3f4f6;">
+        ${item.a}
+      </div>
+    </div>`).join('');
+}
+
+function toggleFaq(i){
+  const body=document.getElementById(`faq-body-${i}`);
+  const arrow=document.getElementById(`faq-arrow-${i}`);
+  const open=body.style.display==='block';
+  body.style.display=open?'none':'block';
+  arrow.style.transform=open?'':'rotate(180deg)';
+}
+
+/* ── 문의 보내기 ── */
+function openInquiryModal(){
+  const note=document.getElementById('inq-email-note');
+  const email=settings.email||'';
+  note.innerHTML=email
+    ?`📧 답변은 <strong>${email}</strong>로 전달됩니다. (변경: 기본정보 설정 탭 → 단체 이메일)`
+    :'⚠️ 단체 이메일이 설정되지 않았습니다. 기본정보 설정 탭에서 <strong>단체 이메일</strong>을 먼저 입력하고 저장하세요.';
+  document.getElementById('inq-subject').value='';
+  document.getElementById('inq-body').value='';
+  const modal=document.getElementById('inquiry-modal');
+  modal.style.display='flex';
+}
+
+function closeInquiryModal(){
+  document.getElementById('inquiry-modal').style.display='none';
+}
+
+function sendInquiry(){
+  const subject=(document.getElementById('inq-subject').value||'').trim();
+  const body=(document.getElementById('inq-body').value||'').trim();
+  if(!subject){alert('제목을 입력해 주세요.');return;}
+  if(!body){alert('문의 내용을 입력해 주세요.');return;}
+  const orgName=settings.orgName||'(단체명 미설정)';
+  const orgCode=settings.orgCode||'';
+  const replyTo=settings.email||'';
+  const mailBody=`안녕하세요, ${orgName}입니다.\n\n${body}\n\n---\n단체명: ${orgName}\n단체코드: ${orgCode}${replyTo?'\n답변 이메일: '+replyTo:''}`;
+  const mailto=`mailto:aypublic@aypublic.or.kr?subject=${encodeURIComponent(`[${orgName}] ${subject}`)}&body=${encodeURIComponent(mailBody)}`;
+  window.open(mailto,'_blank');
+  // 로컬 기록 저장
+  const inquiries=JSON.parse(localStorage.getItem('inquiries')||'[]');
+  inquiries.unshift({id:Date.now(),subject,sentAt:new Date().toISOString(),status:'전송됨'});
+  localStorage.setItem('inquiries',JSON.stringify(inquiries.slice(0,20)));
+  closeInquiryModal();
+  updateFaqBadge();
+  renderInquiryHistory();
+  toast('✅ 메일 앱이 열렸습니다. 발송을 완료해 주세요.');
+}
+
+function renderInquiryHistory(){
+  const inquiries=JSON.parse(localStorage.getItem('inquiries')||'[]');
+  const card=document.getElementById('inquiry-history-card');
+  const body=document.getElementById('inquiry-history-body');
+  if(!card||!body)return;
+  if(!inquiries.length){card.style.display='none';return;}
+  card.style.display='block';
+  body.innerHTML=inquiries.map(q=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f3f4f6;gap:10px;flex-wrap:wrap;">
+      <div>
+        <div style="font-size:14px;font-weight:600;color:#1b3a6b;">${q.subject}</div>
+        <div style="font-size:12px;color:#9ca3af;margin-top:2px;">${new Date(q.sentAt).toLocaleString('ko-KR')}</div>
+      </div>
+      <span style="font-size:11px;padding:3px 10px;border-radius:12px;background:${q.status==='답변완료'?'#dcfce7':'#fff7ed'};color:${q.status==='답변완료'?'#166534':'#92400e'};border:1px solid ${q.status==='답변완료'?'#86efac':'#fdba74'};font-weight:700;white-space:nowrap;cursor:pointer;" onclick="toggleInquiryStatus(${q.id})">${q.status==='답변완료'?'✅ 답변완료':'⏳ 답변대기 (클릭 시 완료처리)'}</span>
+    </div>`).join('');
+}
+
+function toggleInquiryStatus(id){
+  const inquiries=JSON.parse(localStorage.getItem('inquiries')||'[]');
+  const q=inquiries.find(x=>x.id===id);
+  if(!q)return;
+  q.status=q.status==='답변완료'?'전송됨':'답변완료';
+  localStorage.setItem('inquiries',JSON.stringify(inquiries));
+  updateFaqBadge();
+  renderInquiryHistory();
+}
+
+function clearInquiries(){
+  if(!confirm('문의 기록을 모두 삭제하시겠습니까?'))return;
+  localStorage.removeItem('inquiries');
+  updateFaqBadge();
+  renderInquiryHistory();
+}
+
+function updateFaqBadge(){
+  const btn=document.getElementById('faq-tab-btn');
+  if(!btn)return;
+  const inquiries=JSON.parse(localStorage.getItem('inquiries')||'[]');
+  const pending=inquiries.filter(q=>q.status!=='답변완료').length;
+  btn.textContent=pending>0?`📮 FAQ 및 문의 (${pending})`:' 📮 FAQ 및 문의';
 }
 </script>
 </body>
