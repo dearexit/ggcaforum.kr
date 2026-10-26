@@ -902,10 +902,20 @@ function saveResolution(silent){
     if(!confirm(`번호 "${resNo}"가 이미 존재합니다. 덮어쓰시겠습니까?`))return false;
     resolutions=resolutions.filter(r=>r.resNo!==resNo);
   }
-  const resolution={resNo,planDate,payDate,items:JSON.parse(JSON.stringify(entryRows)),createdAt:new Date().toISOString()};
+  const savedItems=JSON.parse(JSON.stringify(entryRows)); // 모달 표시용 복사본
+  const resolution={resNo,planDate,payDate,items:savedItems,createdAt:new Date().toISOString()};
   resolutions.push(resolution);
   resolutions.sort((a,b)=>a.resNo.localeCompare(b.resNo));
   save('resolutions',resolutions);
+
+  // 폼 즉시 초기화 (새 결의서 작성 준비)
+  entryRows=[];
+  document.getElementById('e-resNo').value=getNextResNo();
+  const today=new Date().toISOString().split('T')[0];
+  document.getElementById('e-planDate').value=today;
+  document.getElementById('e-payDate').value=today;
+  renderEntryTable();
+  addEntryRow();
 
   // 센터 동기화 (비동기, 결과 무관하게 진행)
   let syncMsg='';
@@ -914,8 +924,7 @@ function saveResolution(silent){
       syncMsg=ok?'✅ 센터 데이터 전송 완료':'⚠️ 센터 전송 실패 (JSON 파일로 제출하세요)';
     }
     if(!silent){
-      // 증빙서류 제출 안내 모달
-      showSubmitModal(entryRows,syncMsg);
+      showSubmitModal(savedItems,syncMsg);
     }
   });
 
@@ -929,18 +938,18 @@ function saveAndPrint(){
   if(!payDate){alert('지출일자를 입력하세요.');return;}
   if(!entryRows.length){alert('지출 항목을 최소 1개 이상 입력하세요.');return;}
   if(entryRows.some(r=>!r.category||!r.payee||!r.amount)){alert('비목, 지급처, 지출금액은 필수입니다.');return;}
+  const printItems=JSON.parse(JSON.stringify(entryRows)); // 폼 초기화 전 복사
   document.getElementById('e-resNo').value=resNo;
-  const r=saveResolution(true); // silent=true: 저장만, 모달 없이
+  const r=saveResolution(true); // silent=true: 저장만, 모달 없이 (내부에서 폼 초기화됨)
   if(r){
-    printResolutionObj({resNo,planDate,payDate,items:entryRows});
-    // 출력 직후 증빙 모달 표시
+    printResolutionObj({resNo,planDate,payDate,items:printItems});
     setTimeout(()=>{
       syncToCenter().then(ok=>{
         let syncMsg='';
         if(settings.centerUrl&&settings.centerUrl.trim()){
           syncMsg=ok?'✅ 센터 데이터 전송 완료':'⚠️ 센터 전송 실패 (JSON 파일로 제출하세요)';
         }
-        showSubmitModal(entryRows,syncMsg);
+        showSubmitModal(printItems,syncMsg);
       });
     },400);
   }
@@ -955,7 +964,7 @@ async function syncToCenter(){
   try{
     await fetch(url,{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'text/plain'}, // no-cors 모드에서는 text/plain만 허용 (application/json 불가)
       body:JSON.stringify({
         orgCode:settings.orgCode||'UNKNOWN',
         orgName:settings.orgName||'',
