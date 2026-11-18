@@ -178,6 +178,28 @@ input,select,textarea,button{font-family:inherit;}
   <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
     <button class="btn btn-export" style="font-size:12px;padding:6px 14px;" onclick="exportJSON()">📤 JSON 내보내기</button>
     <span id="sync-status" class="sync-badge none">동기화 미설정</span>
+    <button id="admin-btn" class="btn" style="font-size:12px;padding:6px 14px;background:#6b7280;color:#fff;border:none;" onclick="toggleAdminMode()">🔑 관리자</button>
+  </div>
+</div>
+
+<!-- 관리자 로그인 모달 -->
+<div id="admin-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:12px;padding:32px 28px;width:340px;box-shadow:0 8px 32px rgba(0,0,0,.18);">
+    <h3 style="margin:0 0 6px;font-size:17px;color:#1b3a6b;">🔑 관리자 로그인</h3>
+    <p style="margin:0 0 20px;font-size:13px;color:#6b7280;">관리자 비밀번호를 입력하세요.</p>
+    <input id="admin-pw-input" type="password" placeholder="비밀번호" style="width:100%;padding:10px 12px;border:1.5px solid #d1d5db;border-radius:7px;font-size:14px;box-sizing:border-box;margin-bottom:14px;" onkeydown="if(event.key==='Enter')doAdminLogin()">
+    <div id="admin-login-err" style="color:#dc2626;font-size:12.5px;margin-bottom:10px;display:none;">비밀번호가 맞지 않습니다.</div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="doAdminLogin()" style="flex:1;padding:10px;background:#1b3a6b;color:#fff;border:none;border-radius:7px;font-size:14px;font-weight:700;cursor:pointer;">로그인</button>
+      <button onclick="closeAdminModal()" style="flex:1;padding:10px;background:#f3f4f6;border:none;border-radius:7px;font-size:14px;cursor:pointer;">취소</button>
+    </div>
+    <div style="margin-top:16px;border-top:1px solid #e5e7eb;padding-top:14px;">
+      <div style="font-size:12px;color:#9ca3af;margin-bottom:6px;">비밀번호 변경 (관리자 로그인 후)</div>
+      <div id="admin-pw-change-area" style="display:none;">
+        <input id="admin-new-pw" type="password" placeholder="새 비밀번호" style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;margin-bottom:6px;">
+        <button onclick="changeAdminPw()" style="width:100%;padding:8px;background:#059669;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">변경하기</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -186,6 +208,7 @@ input,select,textarea,button{font-family:inherit;}
   <button class="tab-btn" onclick="switchTab('tab-entry',this)">✏️ 지출내역 입력</button>
   <button class="tab-btn" onclick="switchTab('tab-resolutions',this)">📄 지출결의서 목록</button>
   <button class="tab-btn" onclick="switchTab('tab-status',this)">📊 집행현황</button>
+  <button class="tab-btn" onclick="switchTab('tab-ledger',this)">📒 집행세부내역</button>
   <button class="tab-btn" id="faq-tab-btn" onclick="switchTab('tab-faq',this)">📮 FAQ 및 문의</button>
   <button class="tab-btn" onclick="switchTab('tab-settlement',this)">📋 정산보고서</button>
 </div>
@@ -498,7 +521,31 @@ input,select,textarea,button{font-family:inherit;}
   </div>
 </div>
 
-<!-- ════════════ ⑤ 정산보고서 ════════════ -->
+<!-- ════════════ ⑤ 집행세부내역(회계장부) ════════════ -->
+<div id="tab-ledger" class="tab-panel">
+
+  <div class="card">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+      <span>📒 보조금 집행 세부내역</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <select id="ledger-filter-cat" onchange="renderLedger()" style="padding:6px 10px;border:1.5px solid #d1d5db;border-radius:6px;font-size:13px;">
+          <option value="">전체 비목</option>
+        </select>
+        <button class="btn btn-outline" onclick="printLedger()">🖨️ 출력</button>
+        <button class="btn btn-primary" onclick="downloadLedgerPdf()">📄 PDF</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div id="ledger-admin-note" style="display:none;padding:10px 14px;background:#fef9c3;border:1px solid #fde047;border-radius:7px;font-size:12.5px;color:#854d0e;margin-bottom:14px;">
+        🔑 <strong>관리자 모드</strong> — 비고 항목을 직접 입력할 수 있습니다. 입력 내용은 자동 저장됩니다.
+      </div>
+      <div id="ledger-preview"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ════════════ ⑥ 정산보고서 ════════════ -->
 <div id="tab-settlement" class="tab-panel">
 
   <div class="card">
@@ -693,6 +740,7 @@ function switchTab(id, btn){
   if(id==='tab-status') renderStatus();
   if(id==='tab-settings') renderSettings();
   if(id==='tab-faq'){renderFaq();renderInquiryHistory();}
+  if(id==='tab-ledger') renderLedger();
   if(id==='tab-settlement') renderSettlementPreview();
 }
 
@@ -1578,6 +1626,300 @@ function clearInquiries(){
   localStorage.removeItem('inquiries');
   updateFaqBadge();
   renderInquiryHistory();
+}
+
+/* ══════════════════════════════
+   관리자 모드
+══════════════════════════════ */
+const ADMIN_DEFAULT_PW='center2026';
+let _adminActive=false;
+
+function _getAdminPw(){return localStorage.getItem('admin_pw')||ADMIN_DEFAULT_PW;}
+
+function toggleAdminMode(){
+  if(_adminActive){
+    _adminActive=false;
+    document.getElementById('admin-btn').textContent='🔑 관리자';
+    document.getElementById('admin-btn').style.background='#6b7280';
+    document.querySelectorAll('.admin-only').forEach(el=>el.style.display='none');
+    document.getElementById('ledger-admin-note').style.display='none';
+    return;
+  }
+  const m=document.getElementById('admin-modal');
+  m.style.display='flex';
+  document.getElementById('admin-pw-input').value='';
+  document.getElementById('admin-login-err').style.display='none';
+  document.getElementById('admin-pw-change-area').style.display='none';
+  setTimeout(()=>document.getElementById('admin-pw-input').focus(),100);
+}
+
+function doAdminLogin(){
+  const pw=document.getElementById('admin-pw-input').value;
+  if(pw===_getAdminPw()){
+    _adminActive=true;
+    document.getElementById('admin-modal').style.display='none';
+    document.getElementById('admin-btn').textContent='🔑 관리자 (ON)';
+    document.getElementById('admin-btn').style.background='#059669';
+    document.querySelectorAll('.admin-only').forEach(el=>el.style.display='');
+    document.getElementById('admin-pw-change-area').style.display='block';
+    toast('✅ 관리자 모드가 활성화되었습니다.');
+    const active=document.querySelector('.tab-panel.active');
+    if(active&&active.id==='tab-ledger'){
+      document.getElementById('ledger-admin-note').style.display='block';
+      renderLedger();
+    }
+  } else {
+    document.getElementById('admin-login-err').style.display='block';
+  }
+}
+
+function closeAdminModal(){document.getElementById('admin-modal').style.display='none';}
+
+function changeAdminPw(){
+  const np=document.getElementById('admin-new-pw').value.trim();
+  if(!np){toast('⚠️ 새 비밀번호를 입력하세요.');return;}
+  if(np.length<4){toast('⚠️ 비밀번호는 4자 이상이어야 합니다.');return;}
+  localStorage.setItem('admin_pw',np);
+  toast('✅ 비밀번호가 변경되었습니다.');
+  document.getElementById('admin-new-pw').value='';
+}
+
+/* ══════════════════════════════
+   집행세부내역 (회계장부)
+══════════════════════════════ */
+function _ledgerNoteKey(resNo,idx){return `ldg_note_${settings.orgCode||'ORG'}_${resNo}_${idx}`;}
+
+function renderLedger(){
+  // 비목 필터 옵션 갱신
+  const sel=document.getElementById('ledger-filter-cat');
+  if(sel){
+    const used=[...new Set(resolutions.flatMap(r=>(r.items||[]).map(i=>i.category)).filter(Boolean))];
+    sel.innerHTML='<option value="">전체 비목</option>'+used.map(c=>`<option value="${c}">${c}</option>`).join('');
+  }
+  const filterCat=sel?sel.value:'';
+
+  const el=document.getElementById('ledger-preview');
+  if(!el) return;
+
+  if(_adminActive) document.getElementById('ledger-admin-note').style.display='block';
+
+  // 집계 데이터 준비
+  const catBalance={};
+  ITEMS.forEach(c=>catBalance[c]=settings.budget[c]||0);
+
+  // 전체 항목 (날짜순)
+  const allItems=[];
+  resolutions.forEach(r=>{
+    (r.items||[]).forEach((item,idx)=>{
+      allItems.push({
+        resNo:r.resNo,
+        payDate:r.payDate||'',
+        planDate:r.planDate||'',
+        category:item.category||'',
+        content:item.content||'',
+        payee:item.payee||'',
+        amount:(Number(item.amount)||0)+(Number(item.vat)||0),
+        account:item.account||'',
+        receipt:item.receipt||'',
+        idx
+      });
+    });
+  });
+  allItems.sort((a,b)=>(a.payDate+a.resNo).localeCompare(b.payDate+b.resNo));
+
+  const filtered=filterCat?allItems.filter(i=>i.category===filterCat):allItems;
+
+  // 비목별 잔액 추적
+  const catSpent={};
+  ITEMS.forEach(c=>catSpent[c]=0);
+
+  let no=0;
+  const rows=filtered.map(item=>{
+    no++;
+    catSpent[item.category]=(catSpent[item.category]||0)+item.amount;
+    const alloc=settings.budget[item.category]||0;
+    const bal=alloc-catSpent[item.category];
+    const noteKey=_ledgerNoteKey(item.resNo,item.idx);
+    const noteVal=(localStorage.getItem(noteKey)||'').replace(/"/g,'&quot;');
+    const noteCell=_adminActive
+      ?`<input type="text" value="${noteVal}" onchange="localStorage.setItem('${noteKey}',this.value)" style="width:100%;border:1px solid #fde047;padding:3px 5px;font-size:11px;border-radius:3px;" placeholder="비고...">`
+      :`${localStorage.getItem(noteKey)||''}`;
+    return `<tr>
+      <td style="text-align:center;">${no}</td>
+      <td style="text-align:center;">${(item.payDate||item.planDate||'').replace(/-/g,'.')}</td>
+      <td style="text-align:center;">${item.resNo}</td>
+      <td>${item.category}</td>
+      <td>${item.content}</td>
+      <td>${item.payee}</td>
+      <td style="text-align:right;">${item.amount.toLocaleString()}</td>
+      <td style="text-align:right;${bal<0?'color:#dc2626;font-weight:700;':''}">${bal.toLocaleString()}</td>
+      <td style="text-align:center;">${item.account}</td>
+      <td>${noteCell}</td>
+    </tr>`;
+  }).join('');
+
+  const totalSpent=filtered.reduce((s,i)=>s+i.amount,0);
+  const totalBudget=filterCat?(settings.budget[filterCat]||0):settings.totalBudget||0;
+  const totalBal=totalBudget-totalSpent;
+
+  el.innerHTML=`
+  <div style="margin-bottom:14px;font-size:13px;color:#374151;">
+    <strong>교부예산:</strong> ${totalBudget.toLocaleString()}원 &nbsp;|&nbsp;
+    <strong>총 집행:</strong> ${totalSpent.toLocaleString()}원 &nbsp;|&nbsp;
+    <strong>잔액:</strong> <span style="${totalBal<0?'color:#dc2626;font-weight:700;':''}">${totalBal.toLocaleString()}원</span>
+    &nbsp;(집행률 ${totalBudget>0?Math.round(totalSpent/totalBudget*100):0}%)
+  </div>
+  <div style="overflow-x:auto;">
+  <table style="width:100%;border-collapse:collapse;font-size:12px;">
+    <thead>
+      <tr style="background:#1b3a6b;color:#fff;">
+        <th style="padding:7px 6px;min-width:36px;">연번</th>
+        <th style="padding:7px 6px;min-width:85px;">지출일자</th>
+        <th style="padding:7px 6px;min-width:80px;">결의서번호</th>
+        <th style="padding:7px 6px;min-width:80px;">비목</th>
+        <th style="padding:7px 6px;min-width:120px;text-align:left;">지출내용</th>
+        <th style="padding:7px 6px;min-width:90px;text-align:left;">지급처</th>
+        <th style="padding:7px 6px;min-width:85px;">집행금액(원)</th>
+        <th style="padding:7px 6px;min-width:85px;">비목잔액(원)</th>
+        <th style="padding:7px 6px;min-width:70px;">지급방법</th>
+        <th style="padding:7px 6px;min-width:100px;text-align:left;">비고</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows||'<tr><td colspan="10" style="text-align:center;padding:20px;color:#9ca3af;">작성된 지출내역이 없습니다.</td></tr>'}
+    </tbody>
+    <tfoot>
+      <tr style="background:#e8f0fe;font-weight:700;">
+        <td colspan="6" style="text-align:center;padding:7px;">합 계</td>
+        <td style="text-align:right;padding:7px;">${totalSpent.toLocaleString()}</td>
+        <td style="text-align:right;padding:7px;${totalBal<0?'color:#dc2626;':''}">${totalBal.toLocaleString()}</td>
+        <td colspan="2"></td>
+      </tr>
+    </tfoot>
+  </table>
+  </div>`;
+}
+
+function _buildLedgerHtml(){
+  const org=settings.orgName||'(단체명)';
+  const proj=settings.projName||'(사업명)';
+  const agency=settings.agency||'';
+  const now=new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
+
+  const allItems=[];
+  resolutions.forEach(r=>{
+    (r.items||[]).forEach((item,idx)=>{
+      allItems.push({
+        resNo:r.resNo,
+        payDate:r.payDate||r.planDate||'',
+        category:item.category||'',
+        content:item.content||'',
+        payee:item.payee||'',
+        amount:(Number(item.amount)||0)+(Number(item.vat)||0),
+        account:item.account||'',
+        idx
+      });
+    });
+  });
+  allItems.sort((a,b)=>(a.payDate+a.resNo).localeCompare(b.payDate+b.resNo));
+
+  const catSpent={};
+  let no=0;
+  const rows=allItems.map(item=>{
+    no++;
+    catSpent[item.category]=(catSpent[item.category]||0)+item.amount;
+    const alloc=settings.budget[item.category]||0;
+    const bal=alloc-catSpent[item.category];
+    const noteKey=_ledgerNoteKey(item.resNo,item.idx);
+    const note=localStorage.getItem(noteKey)||'';
+    return `<tr>
+      <td>${no}</td>
+      <td>${item.payDate.replace(/-/g,'.')}</td>
+      <td>${item.resNo}</td>
+      <td>${item.category}</td>
+      <td style="text-align:left;">${item.content}</td>
+      <td style="text-align:left;">${item.payee}</td>
+      <td style="text-align:right;">${item.amount.toLocaleString()}</td>
+      <td style="text-align:right;${bal<0?'color:#dc2626;font-weight:700;':''}">${bal.toLocaleString()}</td>
+      <td>${item.account}</td>
+      <td style="text-align:left;">${note}</td>
+    </tr>`;
+  }).join('');
+
+  const totalSpent=allItems.reduce((s,i)=>s+i.amount,0);
+  const totalBal=(settings.totalBudget||0)-totalSpent;
+
+  return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>집행세부내역_${org}</title>
+  <style>
+    body{font-family:'맑은 고딕','Malgun Gothic',sans-serif;font-size:11px;color:#111;margin:16px;}
+    h2{text-align:center;font-size:15px;margin:0 0 4px;}
+    h3{text-align:center;font-size:11px;font-weight:400;color:#555;margin:0 0 16px;}
+    .info{width:100%;border-collapse:collapse;margin-bottom:14px;}
+    .info td{border:1px solid #999;padding:4px 8px;}
+    .info .lbl{background:#f0f4fb;font-weight:700;width:70px;text-align:center;}
+    table.data{width:100%;border-collapse:collapse;}
+    table.data th{background:#1b3a6b;color:#fff;padding:6px 5px;text-align:center;font-size:11px;}
+    table.data td{border:1px solid #ccc;padding:4px 5px;vertical-align:middle;text-align:center;}
+    table.data tr:nth-child(even) td{background:#f9f9f9;}
+    .total-row td{background:#e8f0fe!important;font-weight:700;}
+    .sign{margin-top:24px;text-align:right;font-size:11px;line-height:2;}
+    @media print{body{margin:0;}button{display:none!important;}}
+  </style></head><body>
+  <h2>${agency?agency+' ':''}보조금 집행 세부내역</h2>
+  <h3>${proj}</h3>
+  <table class="info">
+    <tr><td class="lbl">단 체 명</td><td>${org}</td><td class="lbl">사 업 명</td><td>${proj}</td></tr>
+    <tr><td class="lbl">지원기관</td><td>${agency}</td><td class="lbl">작 성 일</td><td>${now}</td></tr>
+  </table>
+  <table class="data">
+    <thead><tr>
+      <th style="width:30px;">연번</th><th style="width:72px;">지출일자</th>
+      <th style="width:70px;">결의서번호</th><th style="width:70px;">비목</th>
+      <th style="min-width:100px;">지출내용</th><th style="width:80px;">지급처</th>
+      <th style="width:76px;">집행금액</th><th style="width:76px;">비목잔액</th>
+      <th style="width:60px;">지급방법</th><th>비고</th>
+    </tr></thead>
+    <tbody>${rows||'<tr><td colspan="10" style="text-align:center;padding:14px;">내역 없음</td></tr>'}</tbody>
+    <tfoot><tr class="total-row">
+      <td colspan="6" style="text-align:center;">합 계</td>
+      <td style="text-align:right;">${totalSpent.toLocaleString()}</td>
+      <td style="text-align:right;${totalBal<0?'color:#dc2626;':''}">${totalBal.toLocaleString()}</td>
+      <td colspan="2"></td>
+    </tr></tfoot>
+  </table>
+  <div class="sign">작성일 : ${now}&nbsp;&nbsp;&nbsp;&nbsp;${org} 담당자 (인)</div>
+  </body></html>`;
+}
+
+function printLedger(){
+  const html=_buildLedgerHtml();
+  const win=window.open('','_blank','width=1000,height=800');
+  win.document.write(html);
+  win.document.close();
+  win.onload=()=>{win.focus();win.print();};
+}
+
+async function downloadLedgerPdf(){
+  toast('📄 PDF 생성 중...',8000);
+  const rawHtml=_buildLedgerHtml();
+  try{
+    const pdfBytes=await _htmlToPdfU8(rawHtml);
+    const blob=new Blob([pdfBytes],{type:'application/pdf'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=`집행세부내역_${settings.orgCode||'단체'}.pdf`;a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+    toast('✅ PDF 다운로드 완료');
+  }catch(e){
+    const enc=new TextEncoder();
+    const autoHtml=rawHtml.replace('</head>','<script>window.onload=function(){setTimeout(function(){window.print();},600);}<\/script></head>');
+    const blob=new Blob([enc.encode(autoHtml)],{type:'text/html'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=`집행세부내역_${settings.orgCode||'단체'}.html`;a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+    toast('⚠️ PDF 변환 실패 — HTML 파일로 저장됐습니다.');
+  }
 }
 
 function updateFaqBadge(){
