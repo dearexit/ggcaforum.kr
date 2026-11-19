@@ -307,6 +307,57 @@ input,select,textarea,button{font-family:inherit;}
           <input type="text" id="s-approver-name" placeholder="예) 김대표">
         </div>
       </div>
+
+      <!-- 서명 이미지 업로드 -->
+      <div style="margin-top:18px;padding-top:16px;border-top:1px solid #e5e7eb;">
+        <div style="font-size:13px;font-weight:700;color:#1b3a6b;margin-bottom:12px;">🖊️ 서명 이미지 (결재란에 자동 표시)</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;">
+
+          <!-- 기안자 서명 -->
+          <div style="flex:1;min-width:140px;text-align:center;">
+            <div style="font-size:12px;color:#6b7280;margin-bottom:6px;">기안자 (담당자)</div>
+            <div id="sig-preview-drafter" style="width:120px;height:60px;border:1.5px dashed #d1d5db;border-radius:6px;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;background:#fafafa;overflow:hidden;cursor:pointer;" onclick="document.getElementById('sig-input-drafter').click()">
+              <span id="sig-placeholder-drafter" style="font-size:11px;color:#9ca3af;">클릭하여 업로드</span>
+            </div>
+            <input type="file" id="sig-input-drafter" accept="image/*" style="display:none" onchange="uploadSig('drafter',this)">
+            <div style="display:flex;gap:4px;justify-content:center;">
+              <button type="button" onclick="document.getElementById('sig-input-drafter').click()" style="font-size:11px;padding:3px 10px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:4px;cursor:pointer;">📁 업로드</button>
+              <button type="button" onclick="clearSig('drafter')" style="font-size:11px;padding:3px 8px;background:#fee2e2;border:1px solid #fca5a5;border-radius:4px;cursor:pointer;">✕</button>
+            </div>
+          </div>
+
+          <!-- 검토자 서명 -->
+          <div style="flex:1;min-width:140px;text-align:center;">
+            <div style="font-size:12px;color:#6b7280;margin-bottom:6px;">검토자 <span style="color:#9ca3af;">(없으면 불필요)</span></div>
+            <div id="sig-preview-reviewer" style="width:120px;height:60px;border:1.5px dashed #d1d5db;border-radius:6px;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;background:#fafafa;overflow:hidden;cursor:pointer;" onclick="document.getElementById('sig-input-reviewer').click()">
+              <span id="sig-placeholder-reviewer" style="font-size:11px;color:#9ca3af;">클릭하여 업로드</span>
+            </div>
+            <input type="file" id="sig-input-reviewer" accept="image/*" style="display:none" onchange="uploadSig('reviewer',this)">
+            <div style="display:flex;gap:4px;justify-content:center;">
+              <button type="button" onclick="document.getElementById('sig-input-reviewer').click()" style="font-size:11px;padding:3px 10px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:4px;cursor:pointer;">📁 업로드</button>
+              <button type="button" onclick="clearSig('reviewer')" style="font-size:11px;padding:3px 8px;background:#fee2e2;border:1px solid #fca5a5;border-radius:4px;cursor:pointer;">✕</button>
+            </div>
+          </div>
+
+          <!-- 승인자 서명 -->
+          <div style="flex:1;min-width:140px;text-align:center;">
+            <div style="font-size:12px;color:#6b7280;margin-bottom:6px;">승인자 (대표)</div>
+            <div id="sig-preview-approver" style="width:120px;height:60px;border:1.5px dashed #d1d5db;border-radius:6px;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;background:#fafafa;overflow:hidden;cursor:pointer;" onclick="document.getElementById('sig-input-approver').click()">
+              <span id="sig-placeholder-approver" style="font-size:11px;color:#9ca3af;">클릭하여 업로드</span>
+            </div>
+            <input type="file" id="sig-input-approver" accept="image/*" style="display:none" onchange="uploadSig('approver',this)">
+            <div style="display:flex;gap:4px;justify-content:center;">
+              <button type="button" onclick="document.getElementById('sig-input-approver').click()" style="font-size:11px;padding:3px 10px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:4px;cursor:pointer;">📁 업로드</button>
+              <button type="button" onclick="clearSig('approver')" style="font-size:11px;padding:3px 8px;background:#fee2e2;border:1px solid #fca5a5;border-radius:4px;cursor:pointer;">✕</button>
+            </div>
+          </div>
+
+        </div>
+        <div style="margin-top:10px;font-size:11.5px;color:#6b7280;">
+          💡 PNG/JPG 이미지를 올리면 결의서 출력 시 결재란에 서명이 자동으로 표시됩니다. 흰 배경에 서명한 이미지를 권장합니다.
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -642,6 +693,8 @@ const EVIDENCE = {
 /* ── 데이터 로드/저장 ── */
 function load(key,def){try{const v=localStorage.getItem(key);return v?JSON.parse(v):def;}catch(e){return def;}}
 function save(key,val){localStorage.setItem(key,JSON.stringify(val));}
+function lsGet(key){try{return localStorage.getItem(key)||'';}catch(e){return '';}}
+function lsSet(key,val){try{localStorage.setItem(key,val);}catch(e){}}
 
 let settings = load('settings',{
   orgName:'', orgCode:'', projName:'', period:'', agency:'', manager:'', phone:'',
@@ -766,6 +819,7 @@ function renderSettings(){
   document.getElementById('s-approver-name').value=settings.approver?.name||'';
   renderBudgetTable();
   updateSyncBadge();
+  renderSigPreviews();
 }
 
 function updateSyncBadge(){
@@ -1194,11 +1248,10 @@ function printResolutionObj(r, returnHtml=false){
   const totalVat=r.items.reduce((s,i)=>s+(Number(i.vat)||0),0);
   const totalSum=totalAmt+totalVat;
   const S=settings;
-  const sigDrafter=lsGet?lsGet('sig_drafter')||'':'';
-  const sigApprover=lsGet?lsGet('sig_approver')||'':'';
-  const sigSeal=lsGet?lsGet('sig_seal')||'':'';
-  const _sigImg=(b64,w=68,h=42)=>b64?`<img src="${b64}" style="max-width:${w}px;max-height:${h}px;object-fit:contain;display:block;margin:0 auto 2px;">`:'';
-
+  const sigDrafter=lsGet('sig_drafter');
+  const sigReviewer=lsGet('sig_reviewer');
+  const sigApprover=lsGet('sig_approver');
+  const _sigImg=(b64,w=72,h=44)=>b64?`<img src="${b64}" style="max-width:${w}px;max-height:${h}px;object-fit:contain;display:block;margin:0 auto 2px;" alt="">`:'';
 
   /* 결재란 */
   const hasReviewer=S.reviewer?.pos||S.reviewer?.name;
@@ -1214,9 +1267,9 @@ function printResolutionObj(r, returnHtml=false){
         <td style="background:#f0f0f0;font-weight:700;">비 고</td>
       </tr>
       <tr>
-        <td style="height:56px;vertical-align:bottom;padding-bottom:4px;">${_sigImg(sigDrafter)}${S.drafter?.pos||'담당자'}<br><strong>${S.drafter?.name||''}</strong></td>
-        <td style="height:56px;vertical-align:bottom;padding-bottom:4px;">${S.reviewer?.pos||''}<br><strong>${S.reviewer?.name||''}</strong></td>
-        <td style="height:56px;vertical-align:bottom;padding-bottom:4px;">${_sigImg(sigApprover)}${S.approver?.pos||'대표'}<br><strong>${S.approver?.name||''}</strong></td>
+        <td style="height:60px;vertical-align:bottom;padding-bottom:4px;text-align:center;">${_sigImg(sigDrafter)}${S.drafter?.pos||'담당자'}<br><strong>${S.drafter?.name||''}</strong></td>
+        <td style="height:60px;vertical-align:bottom;padding-bottom:4px;text-align:center;">${_sigImg(sigReviewer)}${S.reviewer?.pos||''}<br><strong>${S.reviewer?.name||''}</strong></td>
+        <td style="height:60px;vertical-align:bottom;padding-bottom:4px;text-align:center;">${_sigImg(sigApprover)}${S.approver?.pos||'대표'}<br><strong>${S.approver?.name||''}</strong></td>
         <td></td>
       </tr>
     </table>`;
@@ -1230,8 +1283,8 @@ function printResolutionObj(r, returnHtml=false){
         <td style="background:#f0f0f0;font-weight:700;">비 고</td>
       </tr>
       <tr>
-        <td style="height:56px;vertical-align:bottom;padding-bottom:4px;">${_sigImg(sigDrafter)}${S.drafter?.pos||'담당자'}<br><strong>${S.drafter?.name||''}</strong></td>
-        <td style="height:56px;vertical-align:bottom;padding-bottom:4px;">${_sigImg(sigApprover)}${S.approver?.pos||'대표'}<br><strong>${S.approver?.name||''}</strong></td>
+        <td style="height:60px;vertical-align:bottom;padding-bottom:4px;text-align:center;">${_sigImg(sigDrafter)}${S.drafter?.pos||'담당자'}<br><strong>${S.drafter?.name||''}</strong></td>
+        <td style="height:60px;vertical-align:bottom;padding-bottom:4px;text-align:center;">${_sigImg(sigApprover)}${S.approver?.pos||'대표'}<br><strong>${S.approver?.name||''}</strong></td>
         <td></td>
       </tr>
     </table>`;
@@ -1626,6 +1679,61 @@ function clearInquiries(){
   localStorage.removeItem('inquiries');
   updateFaqBadge();
   renderInquiryHistory();
+}
+
+/* ══════════════════════════════
+   서명 이미지
+══════════════════════════════ */
+const SIG_ROLES=['drafter','reviewer','approver'];
+
+function renderSigPreviews(){
+  SIG_ROLES.forEach(role=>{
+    const b64=lsGet(`sig_${role}`);
+    const preview=document.getElementById(`sig-preview-${role}`);
+    const placeholder=document.getElementById(`sig-placeholder-${role}`);
+    if(!preview) return;
+    if(b64){
+      preview.innerHTML=`<img src="${b64}" style="max-width:116px;max-height:56px;object-fit:contain;">`;
+    } else {
+      preview.innerHTML=`<span id="sig-placeholder-${role}" style="font-size:11px;color:#9ca3af;">클릭하여 업로드</span>`;
+    }
+  });
+}
+
+function uploadSig(role, input){
+  const file=input.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    // 이미지를 canvas로 리사이즈 후 저장 (최대 240×120, 품질 0.85)
+    const img=new Image();
+    img.onload=()=>{
+      const maxW=240, maxH=120;
+      let w=img.width, h=img.height;
+      if(w>maxW){h=Math.round(h*maxW/w);w=maxW;}
+      if(h>maxH){w=Math.round(w*maxH/h);h=maxH;}
+      const canvas=document.createElement('canvas');
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      const b64=canvas.toDataURL('image/png');
+      try{
+        lsSet(`sig_${role}`,b64);
+        renderSigPreviews();
+        toast(`✅ ${role==='drafter'?'기안자':role==='approver'?'승인자':'검토자'} 서명이 저장되었습니다.`);
+      } catch(err){
+        toast('⚠️ 저장 실패: 이미지 용량을 줄여주세요.');
+      }
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+  input.value='';
+}
+
+function clearSig(role){
+  localStorage.removeItem(`sig_${role}`);
+  renderSigPreviews();
+  toast(`🗑️ ${role==='drafter'?'기안자':role==='approver'?'승인자':'검토자'} 서명이 삭제되었습니다.`);
 }
 
 /* ══════════════════════════════
