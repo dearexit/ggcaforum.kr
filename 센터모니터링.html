@@ -1295,12 +1295,24 @@ const _LEDGER_CSS=`
   /* 증빙사진 */
   .ev-title{text-align:center;font-size:13px;font-weight:700;border:1px solid #000;padding:7px;margin-bottom:0;}
   .ev-info{border:1px solid #000;border-top:none;padding:8px 10px;font-size:10.5px;line-height:1.9;}
-  .ev-label{font-size:9.5px;color:#555;margin-top:5px;text-align:center;}
-  .ev-page{page-break-after:always;break-after:page;width:100%;box-sizing:border-box;border:1px solid #000;padding:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:245mm;}
-  .ev-page img{max-width:100%;max-height:210mm;object-fit:contain;}
-  .ev-page-title{text-align:center;font-size:13px;font-weight:700;border:1px solid #000;padding:7px;margin-bottom:0;width:100%;box-sizing:border-box;}
-  .ev-page-info{border:1px solid #000;border-top:none;padding:8px 10px;font-size:10.5px;line-height:1.9;width:100%;box-sizing:border-box;margin-bottom:4px;}
-  @media print{body{margin:4mm 8mm;}button{display:none!important;}}
+  .ev-label{font-size:9px;color:#555;margin-top:4px;text-align:center;}
+  .ev-page-title{text-align:center;font-size:12px;font-weight:700;border:1px solid #000;padding:5px;width:100%;box-sizing:border-box;}
+  .ev-page-info{border:1px solid #000;border-top:none;padding:5px 10px;font-size:10px;line-height:1.7;width:100%;box-sizing:border-box;margin-bottom:2px;}
+  /* 물품사진: 2×2 = 한 페이지 4장 */
+  .ev-g4{display:grid;grid-template-columns:1fr 1fr;height:228mm;border:1px solid #000;page-break-after:always;break-after:page;box-sizing:border-box;}
+  .ev-g4-cell{border-right:1px solid #000;border-bottom:1px solid #000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px;overflow:hidden;box-sizing:border-box;}
+  .ev-g4-cell:nth-child(2n){border-right:none;}
+  .ev-g4-cell:nth-child(3),.ev-g4-cell:nth-child(4){border-bottom:none;}
+  .ev-g4-cell img{max-width:100%;max-height:106mm;object-fit:contain;}
+  /* 영수증: 2열 = 한 페이지 2장 */
+  .ev-g2{display:grid;grid-template-columns:1fr 1fr;height:238mm;border:1px solid #000;page-break-after:always;break-after:page;box-sizing:border-box;}
+  .ev-g2-cell{border-right:1px solid #000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px;overflow:hidden;box-sizing:border-box;}
+  .ev-g2-cell:last-child{border-right:none;}
+  .ev-g2-cell img{max-width:100%;max-height:222mm;object-fit:contain;}
+  /* 단독출력: 1장/페이지 */
+  .ev-g1{height:238mm;border:1px solid #000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px;page-break-after:always;break-after:page;box-sizing:border-box;}
+  .ev-g1 img{max-width:100%;max-height:222mm;object-fit:contain;}
+  @media print{body{margin:0;}button{display:none!important;}}
 `;
 
 function printOrgLedger(orgCode){
@@ -1460,31 +1472,44 @@ function _doPrintEvidence(){
   const photoInfo=`■ 구입물품명: ${contents}<br>■ 구입 목적: ${(r.items||[]).filter(i=>i.category==='물품구입비').map(i=>i.content).join(', ')||'(결의서 내용 참고)'}`;
   const rcInfo=`■ 지출결의서: ${resNo}&nbsp;&nbsp;■ 구입 내역: ${contents||cats}<br><span style="color:#c00;font-size:9.5px;">※ 영수증 원본 훼손방지를 위해 복사·사진 촬영하여 보관</span>`;
 
-  photos.forEach((f,i)=>{
+  // 물품사진: 4장씩 묶어 2×2 그리드
+  for(let i=0;i<photos.length;i+=4){
+    const grp=photos.slice(i,i+4);
+    while(grp.length<4) grp.push(null);
+    const cells=grp.map((f,ci)=>`
+      <div class="ev-g4-cell">
+        ${f&&f.data?`<img src="${f.data}" alt="${f.name||''}">`:'<div style="color:#ddd;font-size:11px;">-</div>'}
+        ${f?`<div class="ev-label">${f.name||'물품사진'+(i+ci+1)}</div>`:''}
+      </div>`).join('');
+    const pg=Math.floor(i/4)+1, tot=Math.ceil(photos.length/4);
     evPages+=`
-    <div class="ev-page-title">증빙 사진 자료 (물품구입사진${photos.length>1?' '+(i+1):''})</div>
+    <div class="ev-page-title">증빙 사진 자료 (물품구입사진)${tot>1?' &nbsp;'+pg+'/'+tot:''}</div>
     <div class="ev-page-info">${photoInfo}</div>
-    <div class="ev-page">
-      ${f.data?`<img src="${f.data}" alt="${f.name||''}">`:'<div style="color:#aaa;">이미지 없음</div>'}
-      <div class="ev-label">${f.name||'물품사진'+(i+1)}</div>
-    </div>`;
-  });
+    <div class="ev-g4">${cells}</div>`;
+  }
 
-  receipts.forEach((f,i)=>{
+  // 영수증: 2장씩 묶어 2열 그리드
+  for(let i=0;i<receipts.length;i+=2){
+    const grp=receipts.slice(i,i+2);
+    while(grp.length<2) grp.push(null);
+    const cells=grp.map((f,ci)=>`
+      <div class="ev-g2-cell">
+        ${f&&f.data?`<img src="${f.data}" alt="${f.name||''}">`:'<div style="color:#ddd;font-size:11px;">-</div>'}
+        ${f?`<div class="ev-label">${f.name||'영수증'+(i+ci+1)}</div>`:''}
+      </div>`).join('');
+    const pg=Math.floor(i/2)+1, tot=Math.ceil(receipts.length/2);
     evPages+=`
-    <div class="ev-page-title">증빙 사진 자료 (영수증${receipts.length>1?' '+(i+1):''})</div>
+    <div class="ev-page-title">증빙 사진 자료 (영수증)${tot>1?' &nbsp;'+pg+'/'+tot:''}</div>
     <div class="ev-page-info">${rcInfo}</div>
-    <div class="ev-page">
-      ${f.data?`<img src="${f.data}" alt="${f.name||''}">`:'<div style="color:#aaa;">이미지 없음</div>'}
-      <div class="ev-label">${f.name||'영수증'+(i+1)}</div>
-    </div>`;
-  });
+    <div class="ev-g2">${cells}</div>`;
+  }
 
+  // 단독출력: 1장씩 전체 페이지
   singles.forEach((f,i)=>{
     evPages+=`
-    <div class="ev-page-title">증빙 사진 자료${singles.length>1?' '+(i+1):''}</div>
+    <div class="ev-page-title">증빙 사진 자료${singles.length>1?' '+(i+1)+'/'+singles.length:''}</div>
     <div class="ev-page-info">■ 결의서: ${resNo}&nbsp;&nbsp;■ ${contents||cats}</div>
-    <div class="ev-page">
+    <div class="ev-g1">
       ${f.data?`<img src="${f.data}" alt="${f.name||''}">`:'<div style="color:#aaa;">이미지 없음</div>'}
       <div class="ev-label">${f.name||'사진'+(i+1)}</div>
     </div>`;
