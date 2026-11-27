@@ -502,19 +502,38 @@ async function _storeAttachFiles(orgCode, resolutions){
   return total;
 }
 
+/* CORS 우회용 JSONP 방식 — GAS GET 요청 */
+function _jsonpFetch(url, timeoutMs=20000){
+  return new Promise((resolve,reject)=>{
+    const cbName='__gasJSONP_'+Date.now();
+    const script=document.createElement('script');
+    const timer=setTimeout(()=>{
+      delete window[cbName]; script.remove();
+      reject(new Error('timeout: GAS 응답 없음(20초 초과)'));
+    },timeoutMs);
+    window[cbName]=(data)=>{
+      clearTimeout(timer); delete window[cbName]; script.remove();
+      resolve(data);
+    };
+    script.onerror=()=>{
+      clearTimeout(timer); delete window[cbName]; script.remove();
+      reject(new Error('script 오류: GAS URL 또는 doGet 함수 확인 필요'));
+    };
+    script.src=url+(url.includes('?')?'&':'?')+'callback='+cbName+'&t='+Date.now();
+    document.head.appendChild(script);
+  });
+}
+
 async function fetchFromGas(){
   if(!gasUrl){toast('Apps Script URL이 설정되지 않았습니다.');return;}
   const status=document.getElementById('url-status');
   status.innerHTML='<span style="color:#7c3aed;">🔄 데이터 불러오는 중...</span>';
-  toast('🔄 데이터 불러오는 중... 잠시 기다려 주세요.',8000);
+  toast('🔄 데이터 불러오는 중... 잠시 기다려 주세요.',20000);
   try{
-    const resp=await fetch(gasUrl,{method:'GET',redirect:'follow'});
-    if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const json=await resp.json();
+    const json=await _jsonpFetch(gasUrl);
     let count=0,totalAttach=0;
     for(const [orgCode,entry] of Object.entries(json)){
       if(entry.data){
-        // GAS 응답에 첨부파일 바이너리가 있으면 IndexedDB에 저장
         const n=await _storeAttachFiles(orgCode, entry.data.resolutions||[]);
         totalAttach+=n;
         orgsData[orgCode]={data:entry.data,syncedAt:entry.syncedAt||'',source:'gas'};
@@ -527,7 +546,7 @@ async function fetchFromGas(){
     document.getElementById('last-refresh').textContent='최근 갱신: '+fmtDateTime(new Date().toISOString());
     toast(`✅ ${count}개 단체 데이터 갱신 완료${totalAttach?` · 첨부파일 ${totalAttach}개`:''}`);
   }catch(e){
-    status.innerHTML=`<span style="color:#dc2626;">❌ 불러오기 실패: ${e.message} (CORS 오류 시 JSON 방식 사용)</span>`;
+    status.innerHTML=`<span style="color:#dc2626;">❌ 불러오기 실패: ${e.message}<br><small style="color:#6b7280;">GAS 스크립트에 doGet(JSONP) 함수가 필요합니다.</small></span>`;
     toast('❌ 데이터 불러오기 실패');
   }
 }
