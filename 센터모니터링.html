@@ -671,7 +671,9 @@ function openDetail(orgCode){
       <td class="amt"><strong>${fmtAmt(total)}</strong></td>
       <td style="white-space:nowrap;">
         <button onclick="event.stopPropagation();printResDetail('${orgCode}','${r.resNo}')" style="padding:3px 10px;background:#475569;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer;margin-right:4px;">🖨️ 출력</button>
-        <button onclick="event.stopPropagation();downloadResZip('${orgCode}','${r.resNo}')" style="padding:3px 10px;background:#1b3a6b;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer;">📦 ZIP${attCount?` (첨부${attCount})`:''}</button>
+        <button onclick="event.stopPropagation();downloadResZip('${orgCode}','${r.resNo}')" style="padding:3px 10px;background:#1b3a6b;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer;margin-right:4px;">📦 ZIP${attCount?` (첨부${attCount})`:''}</button>
+        ${attCount?`<button onclick="event.stopPropagation();printOrgEvidence('${orgCode}','${r.resNo}')" style="padding:3px 10px;background:#0891b2;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer;">🖼️ 증빙출력</button>`:''}
+
       </td>
     </tr>`;
   }).join('');
@@ -1277,6 +1279,31 @@ function copyGasCode(){
 /* ════════════════════════════════
    집행세부내역 출력
 ════════════════════════════════ */
+/* 회계장부 공통 CSS */
+const _LEDGER_CSS=`
+  body{font-family:'맑은 고딕','Malgun Gothic',sans-serif;font-size:10.5px;color:#111;margin:12px 16px;}
+  h2{text-align:center;font-size:14px;font-weight:700;margin:0 0 2px;}
+  .sub{text-align:right;font-size:10px;color:#555;margin-bottom:10px;}
+  table{width:100%;border-collapse:collapse;}
+  th,td{border:1px solid #000;padding:4px 5px;text-align:center;vertical-align:middle;}
+  th{background:#f0f0f0;font-weight:700;}
+  .amt{text-align:right;}
+  .left{text-align:left;}
+  .total-row td{background:#e8e8e8!important;font-weight:700;}
+  .note{font-size:9.5px;color:#c00;margin-top:6px;}
+  .page-break{page-break-before:always;}
+  /* 증빙사진 */
+  .ev-title{text-align:center;font-size:13px;font-weight:700;border:1px solid #000;padding:7px;margin-bottom:0;}
+  .ev-info{border:1px solid #000;border-top:none;padding:8px 10px;font-size:10.5px;line-height:1.9;}
+  .ev-grid{display:grid;grid-template-columns:1fr 1fr;border-left:1px solid #000;margin-bottom:0;}
+  .ev-cell{border-right:1px solid #000;border-bottom:1px solid #000;min-height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px;}
+  .ev-cell img{max-width:100%;max-height:160px;object-fit:contain;}
+  .ev-label{font-size:9.5px;color:#555;margin-top:5px;text-align:center;}
+  .ev-receipt{border:1px solid #000;padding:16px;min-height:200px;}
+  .ev-receipt img{max-width:100%;margin-bottom:10px;}
+  @media print{body{margin:4mm 8mm;}button{display:none!important;}}
+`;
+
 function printOrgLedger(orgCode){
   const entry=orgsData[orgCode];
   if(!entry){toast('단체 데이터를 찾을 수 없습니다.');return;}
@@ -1288,91 +1315,159 @@ function printOrgLedger(orgCode){
   const totalBudget=d.totalBudget||0;
   const now=new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
 
-  // 모든 항목 날짜순 정렬
-  const allItems=[];
-  (d.resolutions||[]).forEach(r=>{
-    (r.items||[]).forEach((item,idx)=>{
-      allItems.push({
-        resNo:r.resNo,
-        payDate:r.payDate||r.planDate||'',
+  // 결의서별 → 항목별 행 (날짜순)
+  const resolutions=[...(d.resolutions||[])].sort((a,b)=>(a.payDate||a.planDate||'').localeCompare(b.payDate||b.planDate||''));
+  const rows=[];
+  resolutions.forEach(r=>{
+    const items=r.items||[];
+    const payDate=(r.payDate||r.planDate||'').replace(/-/g,'.');
+    items.forEach((item,idx)=>{
+      const amt=(Number(item.amount)||0)+(Number(item.vat)||0);
+      rows.push({
+        resNo:idx===0?r.resNo:'',
+        payDate:idx===0?payDate:'',
+        amt,
         category:item.category||'',
         content:item.content||'',
         payee:item.payee||'',
-        amount:(Number(item.amount)||0)+(Number(item.vat)||0),
         account:item.account||''
       });
     });
+    // 소계 행 (항목 2개 이상이면)
+    if(items.length>1){
+      const sub=items.reduce((s,i)=>s+(Number(i.amount)||0)+(Number(i.vat)||0),0);
+      rows.push({isSubtotal:true,resNo:'소 계',amt:sub});
+    }
   });
-  allItems.sort((a,b)=>(a.payDate+a.resNo).localeCompare(b.payDate+b.resNo));
 
-  const catSpent={};
-  let no=0;
-  const rows=allItems.map(item=>{
-    no++;
-    catSpent[item.category]=(catSpent[item.category]||0)+item.amount;
-    const alloc=budget[item.category]||0;
-    const bal=alloc-catSpent[item.category];
+  const totalSpent=resolutions.flatMap(r=>r.items||[]).reduce((s,i)=>s+(Number(i.amount)||0)+(Number(i.vat)||0),0);
+  const totalBal=totalBudget-totalSpent;
+
+  const bodyRows=rows.map(row=>{
+    if(row.isSubtotal) return `<tr style="background:#f5f5f5;font-weight:700;"><td colspan="2">${row.resNo}</td><td colspan="3"></td><td class="amt">${row.amt.toLocaleString()}</td><td colspan="2"></td></tr>`;
     return `<tr>
-      <td>${no}</td>
-      <td>${(item.payDate||'').replace(/-/g,'.')}</td>
-      <td>${item.resNo}</td>
-      <td>${item.category}</td>
-      <td style="text-align:left;">${item.content}</td>
-      <td style="text-align:left;">${item.payee}</td>
-      <td style="text-align:right;">${item.amount.toLocaleString()}</td>
-      <td style="text-align:right;${bal<0?'color:#dc2626;font-weight:700;':''}">${bal.toLocaleString()}</td>
-      <td>${item.account}</td>
+      <td>${row.resNo}</td>
+      <td>${row.payDate}</td>
+      <td class="amt">${row.amt?row.amt.toLocaleString():''}</td>
+      <td>${row.category}</td>
+      <td class="left">${row.content}</td>
+      <td>${row.payee}</td>
+      <td>${row.account}</td>
     </tr>`;
   }).join('');
 
-  const totalSpent=allItems.reduce((s,i)=>s+i.amount,0);
-  const totalBal=totalBudget-totalSpent;
-
   const html=`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
-  <title>집행세부내역_${org}</title>
-  <style>
-    body{font-family:'맑은 고딕','Malgun Gothic',sans-serif;font-size:11px;color:#111;margin:16px;}
-    h2{text-align:center;font-size:15px;margin:0 0 4px;}
-    h3{text-align:center;font-size:11px;font-weight:400;color:#555;margin:0 0 16px;}
-    table.info{width:100%;border-collapse:collapse;margin-bottom:14px;}
-    table.info td{border:1px solid #999;padding:4px 8px;}
-    table.info .lbl{background:#f0f4fb;font-weight:700;width:70px;text-align:center;}
-    table.data{width:100%;border-collapse:collapse;}
-    table.data th{background:#1b3a6b;color:#fff;padding:6px 5px;text-align:center;font-size:11px;}
-    table.data td{border:1px solid #ccc;padding:4px 5px;vertical-align:middle;text-align:center;}
-    table.data tr:nth-child(even) td{background:#f9f9f9;}
-    .total-row td{background:#e8f0fe!important;font-weight:700;}
-    .sign{margin-top:20px;text-align:right;font-size:11px;line-height:2;}
-    @media print{body{margin:0;}button{display:none!important;}}
-  </style></head><body>
-  <h2>${agency?agency+' ':''}보조금 집행 세부내역</h2>
-  <h3>${proj}</h3>
-  <table class="info">
-    <tr><td class="lbl">단 체 명</td><td>${org}</td><td class="lbl">사 업 명</td><td>${proj}</td></tr>
-    <tr><td class="lbl">지원기관</td><td>${agency}</td><td class="lbl">작 성 일</td><td>${now}</td></tr>
-    <tr><td class="lbl">교부예산</td><td><strong>${totalBudget.toLocaleString()}원</strong></td>
-        <td class="lbl">총 집행</td><td><strong>${totalSpent.toLocaleString()}원</strong> (잔액 ${totalBal<0?'<span style="color:#dc2626">':''} ${totalBal.toLocaleString()}원${totalBal<0?'</span>':''})</td></tr>
-  </table>
-  <table class="data">
+  <title>② 보조금 집행 세부내역(회계장부)_${org}</title>
+  <style>${_LEDGER_CSS}</style></head><body>
+  <h2>② 보조금 집행 세부내역(회계장부) <small style="font-size:10px;font-weight:400;">※시스템 미 제출시 수기 작성하여 제출</small></h2>
+  <div class="sub">(단위 : 원)</div>
+  <table>
     <thead><tr>
-      <th style="width:30px;">연번</th><th style="width:72px;">지출일자</th>
-      <th style="width:76px;">결의서번호</th><th style="width:70px;">비목</th>
-      <th>지출내용</th><th style="width:80px;">지급처</th>
-      <th style="width:76px;">집행금액(원)</th><th style="width:76px;">비목잔액(원)</th>
-      <th style="width:60px;">지급방법</th>
+      <th style="width:76px;">결의서<br>번호</th>
+      <th style="width:68px;">지출<br>일자</th>
+      <th style="width:76px;">지출액</th>
+      <th style="width:60px;">비목</th>
+      <th>집행 내역</th>
+      <th style="width:76px;">지급처</th>
+      <th style="width:68px;">지급방법</th>
     </tr></thead>
-    <tbody>${rows||'<tr><td colspan="9" style="text-align:center;padding:14px;">내역 없음</td></tr>'}</tbody>
-    <tfoot><tr class="total-row">
-      <td colspan="6" style="text-align:center;">합 계</td>
-      <td style="text-align:right;">${totalSpent.toLocaleString()}</td>
-      <td style="text-align:right;${totalBal<0?'color:#dc2626;':''}">${totalBal.toLocaleString()}</td>
-      <td></td>
-    </tr></tfoot>
+    <tbody>
+      ${bodyRows||'<tr><td colspan="7" style="padding:14px;">내역 없음</td></tr>'}
+    </tbody>
+    <tfoot>
+      <tr class="total-row">
+        <td colspan="2">합 계</td>
+        <td class="amt">${totalSpent.toLocaleString()}</td>
+        <td colspan="4">${totalBal<0?'<span style="color:#c00;">예산 초과: '+Math.abs(totalBal).toLocaleString()+'원</span>':'잔액: '+totalBal.toLocaleString()+'원'}</td>
+      </tr>
+    </tfoot>
   </table>
-  <div class="sign">${now}&nbsp;&nbsp;&nbsp;${org} 담당자 (인)</div>
+  <p class="note">※ 집행내역서는 통장지출 내역과 일치하여야 함.</p>
+  <p class="note">※ 지출결의서, 각종 영수증, 통장 등 세부증빙자료는 별도 제출.</p>
+  <div class="sub" style="margin-top:16px;">작성일 : ${now}&nbsp;&nbsp;&nbsp;${org} 담당자 (인)</div>
   </body></html>`;
 
-  const win=window.open('','_blank','width=1050,height=850');
+  const win=window.open('','_blank','width=900,height=800');
+  win.document.write(html);
+  win.document.close();
+  win.onload=()=>{win.focus();win.print();};
+}
+
+async function printOrgEvidence(orgCode, resNo){
+  const entry=orgsData[orgCode];
+  if(!entry){toast('단체 데이터를 찾을 수 없습니다.');return;}
+  const d=entry.data;
+  const r=(d.resolutions||[]).find(x=>x.resNo===resNo);
+  if(!r){toast('결의서를 찾을 수 없습니다.');return;}
+
+  toast('🖼️ 증빙사진 출력 준비 중...',5000);
+
+  // IndexedDB에서 첨부파일 바이너리 가져오기
+  let attFiles=[];
+  try{ attFiles=await MonitorAttachDB.get(`${orgCode}__${resNo}`)||[]; }catch(e){}
+  // 메타만 있으면 localStorage의 data 사용
+  if(!attFiles.length){
+    attFiles=(r.attachmentFiles||r.attachments||[]);
+  }
+
+  const payDate=(r.payDate||r.planDate||'').replace(/-/g,'.');
+  const org=d.orgName||orgCode;
+  const cats=[...new Set((r.items||[]).map(i=>i.category))].join(', ');
+  const contents=(r.items||[]).map(i=>i.content).filter(Boolean).join(', ');
+  const totalAmt=(r.items||[]).reduce((s,i)=>s+(Number(i.amount)||0)+(Number(i.vat)||0),0);
+
+  // 이미지 첨부 / 비이미지 분류
+  const imgs=attFiles.filter(f=>f.data&&(f.type||'').startsWith('image/'));
+  const others=attFiles.filter(f=>!((f.type||'').startsWith('image/')));
+
+  // 물품구입비 여부 → 물품구입사진 양식
+  const isMoolpum=cats.includes('물품구입');
+
+  let evPages='';
+
+  if(isMoolpum && imgs.length){
+    // 물품구입 증빙사진 양식 (2×N 그리드)
+    const labels=['구입 물품 전체사진','구입물품 세부사진','구입 물품 전체사진 2','구입물품 세부사진 2','구입 물품 전체사진 3','구입물품 세부사진 3'];
+    const cells=imgs.map((f,i)=>`
+      <div class="ev-cell">
+        ${f.data?`<img src="${f.data}" alt="${f.name}">`:'<div style="color:#aaa;font-size:11px;">이미지 없음</div>'}
+        <div class="ev-label">${labels[i]||f.name}</div>
+      </div>`).join('');
+    // 빈 셀 채우기 (짝수 맞추기)
+    const extra=imgs.length%2?`<div class="ev-cell"><div style="color:#aaa;">-</div></div>`:'';
+    evPages+=`
+    <div class="ev-title">증빙 사진 자료(물품구입사진)</div>
+    <div class="ev-info">
+      ■ 구입물품명: ${contents}<br>
+      ■ 구입 목적: ${(r.items||[]).filter(i=>i.category==='물품구입비').map(i=>i.content).join(', ')||'(해당 결의서 내용 참고)'}
+    </div>
+    <div class="ev-grid">${cells}${extra}</div>`;
+  } else if(imgs.length){
+    // 영수증 증빙사진 양식
+    const imgTags=imgs.map(f=>f.data?`<div style="margin-bottom:12px;text-align:center;"><img src="${f.data}" alt="${f.name}" style="max-width:100%;max-height:280px;object-fit:contain;border:1px solid #ddd;"></div>`:'').join('');
+    evPages+=`
+    <div class="ev-title">증빙 사진 자료(영수증)</div>
+    <div class="ev-info">
+      ■ 지출결의서: ${resNo}<br>
+      ■ 구입 내역: ${contents||cats}<br>
+      <span style="color:#c00;font-size:9.5px;">※ 영수증 원본 훼손방지를 위해 복사, 사진 촬영하여 보관</span>
+    </div>
+    <div class="ev-receipt">${imgTags||'<div style="color:#aaa;padding:20px;">첨부 이미지 없음</div>'}</div>`;
+  }
+
+  if(!evPages){
+    toast('⚠️ 출력할 이미지 첨부파일이 없습니다.\n(IndexedDB에서 파일을 불러올 수 없거나 이미지가 아닌 첨부파일입니다.)');
+    return;
+  }
+
+  const html=`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+  <title>증빙사진_${resNo}</title>
+  <style>${_LEDGER_CSS}</style></head><body>
+  <div style="font-size:11px;color:#555;margin-bottom:8px;">결의서: ${resNo} / 지출일자: ${payDate} / 단체: ${org} / 금액: ${totalAmt.toLocaleString()}원</div>
+  ${evPages}
+  </body></html>`;
+
+  const win=window.open('','_blank','width=800,height=900');
   win.document.write(html);
   win.document.close();
   win.onload=()=>{win.focus();win.print();};
