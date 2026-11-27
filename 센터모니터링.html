@@ -1303,6 +1303,9 @@ const _LEDGER_CSS=`
   .ev-receipt-grid{display:grid;grid-template-columns:1fr 1fr;border-left:1px solid #000;}
   .ev-receipt-cell{border-right:1px solid #000;border-bottom:1px solid #000;padding:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:260px;}
   .ev-receipt-cell img{max-width:100%;max-height:240px;object-fit:contain;}
+  .ev-single-grid{display:grid;grid-template-columns:1fr;border-left:1px solid #000;}
+  .ev-single-cell{border-right:1px solid #000;border-bottom:1px solid #000;padding:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:320px;}
+  .ev-single-cell img{max-width:100%;max-height:480px;object-fit:contain;}
   @media print{body{margin:4mm 8mm;}button{display:none!important;}}
 `;
 
@@ -1402,8 +1405,7 @@ let _evFiles=[],_evMeta={};
 
 function _openEvModal(orgCode,resNo,r,imgs){
   _evMeta={orgCode,resNo,r};
-  // 짝수 인덱스=물품사진, 홀수=영수증 기본값
-  _evFiles=imgs.map((f,i)=>({...f,evType:i%2===0?'photo':'receipt'}));
+  _evFiles=imgs.map(f=>({...f,evType:'photo'}));
   const grid=document.getElementById('ev-select-grid');
   grid.innerHTML=_evFiles.map((f,i)=>`
     <div style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;text-align:center;">
@@ -1411,14 +1413,22 @@ function _openEvModal(orgCode,resNo,r,imgs){
         ${f.data?`<img src="${f.data}" style="max-width:100%;max-height:110px;object-fit:contain;">`:'<span style="color:#9ca3af;font-size:11px;">이미지없음</span>'}
       </div>
       <div style="padding:3px 4px;font-size:9.5px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${(f.name||'')}">${f.name||'파일'+(i+1)}</div>
-      <div style="display:flex;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
         <button id="ev-ph-${i}" onclick="_setEvType(${i},'photo')"
-          style="flex:1;padding:5px 2px;font-size:10.5px;border:none;cursor:pointer;background:${i%2===0?'#1b3a6b':'#f3f4f6'};color:${i%2===0?'#fff':'#374151'};">
+          style="padding:4px 2px;font-size:10px;border:none;border-right:1px solid #e5e7eb;cursor:pointer;background:#1b3a6b;color:#fff;">
           🏪 물품
         </button>
         <button id="ev-rc-${i}" onclick="_setEvType(${i},'receipt')"
-          style="flex:1;padding:5px 2px;font-size:10.5px;border:none;cursor:pointer;background:${i%2!==0?'#065f46':'#f3f4f6'};color:${i%2!==0?'#fff':'#374151'};">
+          style="padding:4px 2px;font-size:10px;border:none;cursor:pointer;background:#f3f4f6;color:#374151;">
           🧾 영수증
+        </button>
+        <button id="ev-sn-${i}" onclick="_setEvType(${i},'single')"
+          style="padding:4px 2px;font-size:10px;border:none;border-right:1px solid #e5e7eb;border-top:1px solid #e5e7eb;cursor:pointer;background:#f3f4f6;color:#374151;">
+          📸 단독
+        </button>
+        <button id="ev-ex-${i}" onclick="_setEvType(${i},'exclude')"
+          style="padding:4px 2px;font-size:10px;border:none;border-top:1px solid #e5e7eb;cursor:pointer;background:#f3f4f6;color:#374151;">
+          ✕ 제외
         </button>
       </div>
     </div>`).join('');
@@ -1427,10 +1437,12 @@ function _openEvModal(orgCode,resNo,r,imgs){
 
 function _setEvType(i,type){
   _evFiles[i].evType=type;
-  document.getElementById('ev-ph-'+i).style.background=type==='photo'?'#1b3a6b':'#f3f4f6';
-  document.getElementById('ev-ph-'+i).style.color=type==='photo'?'#fff':'#374151';
-  document.getElementById('ev-rc-'+i).style.background=type==='receipt'?'#065f46':'#f3f4f6';
-  document.getElementById('ev-rc-'+i).style.color=type==='receipt'?'#fff':'#374151';
+  const btns={photo:['ev-ph-'+i,'#1b3a6b'],receipt:['ev-rc-'+i,'#065f46'],single:['ev-sn-'+i,'#92400e'],exclude:['ev-ex-'+i,'#6b7280']};
+  Object.entries(btns).forEach(([t,[id,on]])=>{
+    const el=document.getElementById(id);if(!el)return;
+    el.style.background=type===t?on:'#f3f4f6';
+    el.style.color=type===t?'#fff':'#374151';
+  });
 }
 
 function _closeEvModal(){
@@ -1440,6 +1452,7 @@ function _closeEvModal(){
 function _doPrintEvidence(){
   const photos=_evFiles.filter(f=>f.evType==='photo');
   const receipts=_evFiles.filter(f=>f.evType==='receipt');
+  const singles=_evFiles.filter(f=>f.evType==='single');
   const {orgCode,resNo,r}=_evMeta;
   const d=orgsData[orgCode].data;
   const payDate=(r.payDate||r.planDate||'').replace(/-/g,'.');
@@ -1477,6 +1490,16 @@ function _doPrintEvidence(){
       <span style="color:#c00;font-size:9.5px;">※ 영수증 원본 훼손방지를 위해 복사, 사진 촬영하여 보관</span>
     </div>
     <div class="ev-receipt"><div class="ev-receipt-grid">${rcCells.join('')}</div></div>`;
+  }
+
+  if(singles.length){
+    const snCells=singles.map((f,i)=>f.data
+      ?`<div class="ev-single-cell"><img src="${f.data}" alt="${f.name||''}"><div class="ev-label">${f.name||'사진'+(i+1)}</div></div>`
+      :`<div class="ev-single-cell" style="color:#aaa;">이미지 없음</div>`).join('');
+    evPages+=`
+    <div class="ev-title" style="margin-top:16px;">증빙 사진 자료</div>
+    <div class="ev-info">■ 결의서: ${resNo} / ${contents||cats}</div>
+    <div class="ev-receipt"><div class="ev-single-grid">${snCells}</div></div>`;
   }
 
   _closeEvModal();
@@ -1530,9 +1553,11 @@ async function printOrgEvidence(orgCode, resNo){
       <strong style="font-size:15px;">📂 증빙파일 분류 출력</strong>
       <button onclick="_closeEvModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280;">✕</button>
     </div>
-    <p style="font-size:12.5px;color:#6b7280;margin-bottom:14px;line-height:1.6;">
-      각 파일을 <strong style="color:#1b3a6b;">🏪 물품사진</strong> 또는 <strong style="color:#065f46;">🧾 영수증</strong>으로 분류하세요.<br>
-      물품사진·영수증이 각각의 형식으로 출력됩니다. (기본값: 짝수=물품, 홀수=영수증)
+    <p style="font-size:12px;color:#6b7280;margin-bottom:14px;line-height:1.7;">
+      <strong style="color:#1b3a6b;">🏪 물품</strong> 물품구입·식비·다과비 등 2열 그리드 &nbsp;
+      <strong style="color:#065f46;">🧾 영수증</strong> 영수증 2열 그리드 &nbsp;
+      <strong style="color:#92400e;">📸 단독</strong> 회의·강의·행사·근무확인 등 1열 전체 &nbsp;
+      <strong style="color:#6b7280;">✕ 제외</strong> 출력 안함
     </p>
     <div id="ev-select-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:16px;"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;border-top:1px solid #e5e7eb;padding-top:16px;">
