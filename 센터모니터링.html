@@ -1541,9 +1541,19 @@ async function printOrgEvidence(orgCode, resNo){
   try{ attFiles=await MonitorAttachDB.get(`${orgCode}__${resNo}`)||[]; }catch(e){}
   if(!attFiles.length) attFiles=(r.attachmentFiles||r.attachments||[]);
 
-  const imgs=attFiles.filter(f=>f.data&&(f.type||'').startsWith('image/'));
+  const isImgData=f=>{
+    if(!f.data) return false;
+    if((f.type||'').startsWith('image/')) return true;
+    if(typeof f.data==='string'&&f.data.startsWith('data:image/')) return true;
+    return false;
+  };
+  const imgs=attFiles.filter(isImgData);
   if(!imgs.length){
-    toast('⚠️ 출력할 이미지 첨부파일이 없습니다.');return;
+    const hasAny=attFiles.length;
+    toast(hasAny
+      ?`⚠️ 첨부파일 ${hasAny}건이 있으나 이미지 데이터가 없습니다. JSON을 다시 임포트해 주세요.`
+      :'⚠️ 이미지 첨부파일이 없습니다.');
+    return;
   }
   _openEvModal(orgCode,resNo,r,imgs);
 }
