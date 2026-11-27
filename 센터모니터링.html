@@ -1295,17 +1295,11 @@ const _LEDGER_CSS=`
   /* 증빙사진 */
   .ev-title{text-align:center;font-size:13px;font-weight:700;border:1px solid #000;padding:7px;margin-bottom:0;}
   .ev-info{border:1px solid #000;border-top:none;padding:8px 10px;font-size:10.5px;line-height:1.9;}
-  .ev-grid{display:grid;grid-template-columns:1fr 1fr;border-left:1px solid #000;margin-bottom:0;}
-  .ev-cell{border-right:1px solid #000;border-bottom:1px solid #000;min-height:260px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px;}
-  .ev-cell img{max-width:100%;max-height:240px;object-fit:contain;}
   .ev-label{font-size:9.5px;color:#555;margin-top:5px;text-align:center;}
-  .ev-receipt{border:1px solid #000;padding:0;}
-  .ev-receipt-grid{display:grid;grid-template-columns:1fr 1fr;border-left:1px solid #000;}
-  .ev-receipt-cell{border-right:1px solid #000;border-bottom:1px solid #000;padding:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:260px;}
-  .ev-receipt-cell img{max-width:100%;max-height:240px;object-fit:contain;}
-  .ev-single-grid{display:grid;grid-template-columns:1fr;border-left:1px solid #000;}
-  .ev-single-cell{border-right:1px solid #000;border-bottom:1px solid #000;padding:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:320px;}
-  .ev-single-cell img{max-width:100%;max-height:480px;object-fit:contain;}
+  .ev-page{page-break-after:always;break-after:page;width:100%;box-sizing:border-box;border:1px solid #000;padding:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:245mm;}
+  .ev-page img{max-width:100%;max-height:210mm;object-fit:contain;}
+  .ev-page-title{text-align:center;font-size:13px;font-weight:700;border:1px solid #000;padding:7px;margin-bottom:0;width:100%;box-sizing:border-box;}
+  .ev-page-info{border:1px solid #000;border-top:none;padding:8px 10px;font-size:10.5px;line-height:1.9;width:100%;box-sizing:border-box;margin-bottom:4px;}
   @media print{body{margin:4mm 8mm;}button{display:none!important;}}
 `;
 
@@ -1462,53 +1456,47 @@ function _doPrintEvidence(){
   const totalAmt=(r.items||[]).reduce((s,i)=>s+(Number(i.amount)||0)+(Number(i.vat)||0),0);
 
   let evPages='';
+  const metaLine=`결의서: ${resNo} / ${payDate} / ${org}`;
+  const photoInfo=`■ 구입물품명: ${contents}<br>■ 구입 목적: ${(r.items||[]).filter(i=>i.category==='물품구입비').map(i=>i.content).join(', ')||'(결의서 내용 참고)'}`;
+  const rcInfo=`■ 지출결의서: ${resNo}&nbsp;&nbsp;■ 구입 내역: ${contents||cats}<br><span style="color:#c00;font-size:9.5px;">※ 영수증 원본 훼손방지를 위해 복사·사진 촬영하여 보관</span>`;
 
-  if(photos.length){
-    const cells=photos.map((f,i)=>`
-      <div class="ev-cell">
-        ${f.data?`<img src="${f.data}" alt="${f.name}">`:'<div style="color:#aaa;font-size:11px;">이미지 없음</div>'}
-        <div class="ev-label">구입 물품 사진${photos.length>1?' '+(i+1):''}</div>
-      </div>`).join('');
-    const extra=photos.length%2?`<div class="ev-cell"><div style="color:#aaa;">-</div></div>`:'';
+  photos.forEach((f,i)=>{
     evPages+=`
-    <div class="ev-title">증빙 사진 자료(물품구입사진)</div>
-    <div class="ev-info">
-      ■ 구입물품명: ${contents}<br>
-      ■ 구입 목적: ${(r.items||[]).filter(i=>i.category==='물품구입비').map(i=>i.content).join(', ')||'(해당 결의서 내용 참고)'}
-    </div>
-    <div class="ev-grid">${cells}${extra}</div>`;
-  }
+    <div class="ev-page-title">증빙 사진 자료 (물품구입사진${photos.length>1?' '+(i+1):''})</div>
+    <div class="ev-page-info">${photoInfo}</div>
+    <div class="ev-page">
+      ${f.data?`<img src="${f.data}" alt="${f.name||''}">`:'<div style="color:#aaa;">이미지 없음</div>'}
+      <div class="ev-label">${f.name||'물품사진'+(i+1)}</div>
+    </div>`;
+  });
 
-  if(receipts.length){
-    const rcCells=receipts.map(f=>f.data?`<div class="ev-receipt-cell"><img src="${f.data}" alt="${f.name}"></div>`:`<div class="ev-receipt-cell" style="color:#aaa;">이미지없음</div>`);
-    if(rcCells.length%2===1) rcCells.push('<div class="ev-receipt-cell"></div>');
+  receipts.forEach((f,i)=>{
     evPages+=`
-    <div class="ev-title" style="margin-top:16px;">증빙 사진 자료(영수증)</div>
-    <div class="ev-info">
-      ■ 지출결의서: ${resNo}<br>
-      ■ 구입 내역: ${contents||cats}<br>
-      <span style="color:#c00;font-size:9.5px;">※ 영수증 원본 훼손방지를 위해 복사, 사진 촬영하여 보관</span>
-    </div>
-    <div class="ev-receipt"><div class="ev-receipt-grid">${rcCells.join('')}</div></div>`;
-  }
+    <div class="ev-page-title">증빙 사진 자료 (영수증${receipts.length>1?' '+(i+1):''})</div>
+    <div class="ev-page-info">${rcInfo}</div>
+    <div class="ev-page">
+      ${f.data?`<img src="${f.data}" alt="${f.name||''}">`:'<div style="color:#aaa;">이미지 없음</div>'}
+      <div class="ev-label">${f.name||'영수증'+(i+1)}</div>
+    </div>`;
+  });
 
-  if(singles.length){
-    const snCells=singles.map((f,i)=>f.data
-      ?`<div class="ev-single-cell"><img src="${f.data}" alt="${f.name||''}"><div class="ev-label">${f.name||'사진'+(i+1)}</div></div>`
-      :`<div class="ev-single-cell" style="color:#aaa;">이미지 없음</div>`).join('');
+  singles.forEach((f,i)=>{
     evPages+=`
-    <div class="ev-title" style="margin-top:16px;">증빙 사진 자료</div>
-    <div class="ev-info">■ 결의서: ${resNo} / ${contents||cats}</div>
-    <div class="ev-receipt"><div class="ev-single-grid">${snCells}</div></div>`;
-  }
+    <div class="ev-page-title">증빙 사진 자료${singles.length>1?' '+(i+1):''}</div>
+    <div class="ev-page-info">■ 결의서: ${resNo}&nbsp;&nbsp;■ ${contents||cats}</div>
+    <div class="ev-page">
+      ${f.data?`<img src="${f.data}" alt="${f.name||''}">`:'<div style="color:#aaa;">이미지 없음</div>'}
+      <div class="ev-label">${f.name||'사진'+(i+1)}</div>
+    </div>`;
+  });
 
   _closeEvModal();
   if(!evPages){toast('⚠️ 출력할 이미지가 없습니다.');return;}
 
   const html=`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
   <title>증빙사진_${resNo}</title>
-  <style>${_LEDGER_CSS}</style></head><body>
-  <div style="font-size:11px;color:#555;margin-bottom:8px;">결의서: ${resNo} / 지출일자: ${payDate} / 단체: ${org} / 금액: ${totalAmt.toLocaleString()}원</div>
+  <style>${_LEDGER_CSS}@page{size:A4;margin:10mm;}</style></head><body>
+  <div style="font-size:10px;color:#888;margin-bottom:4px;">${metaLine}</div>
   ${evPages}
   </body></html>`;
   const win=window.open('','_blank','width=800,height=900');
